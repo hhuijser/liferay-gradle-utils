@@ -1,0 +1,355 @@
+import groovy.io.FileType
+
+import org.apache.commons.codec.digest.DigestUtils
+import org.apache.commons.lang3.StringUtils
+
+buildscript {
+	dependencies {
+		classpath "commons-codec:commons-codec:1.10"
+		classpath "org.apache.commons:commons-lang3:3.4"
+	}
+
+	repositories {
+		mavenLocal()
+
+		maven {
+			url "http://cdn.repository.liferay.com/nexus/content/groups/public"
+		}
+	}
+}
+
+plugins {
+	id "de.undercouch.download" version "1.2"
+}
+
+defaultTasks "copyLibsToCache"
+
+ext {
+	modulesDir = new File("S:/lr/liferay-portal/modules")
+}
+
+repositories {
+	mavenLocal()
+
+	maven {
+		url "http://cdn.repository.liferay.com/nexus/content/groups/public"
+	}
+}
+
+File gradleCacheDir = new File(modulesDir, "../.gradle/caches/modules-2/files-2.1")
+
+task checkBndInclude
+task checkBndInstructions
+task checkCache
+task copyLibToCache
+task copyLibsToCache
+task copyRemoteLibToCache
+task deleteIvyXml(type: Delete)
+task fixBnd
+task fixCache
+task replaceBuildXml
+task wrapper(type: Wrapper)
+task writeSettingsIncludes
+
+checkBndInclude << {
+	def bndFiles = fileTree(dir: modulesDir, include: "**/bnd.bnd")
+
+	bndFiles.each {
+		File bndFile ->
+
+		Properties bndProperties = new Properties()
+
+		bndFile.withInputStream {
+			bndProperties.load it
+		}
+
+		String include = bndProperties["-include"]
+
+		if (include) {
+			println include
+		}
+	}
+}
+
+checkBndInstructions << {
+	def bndInstructions = new TreeSet<String>()
+
+	def bndFiles = fileTree(dir: modulesDir, include: "**/bnd.bnd")
+
+	bndFiles.each {
+		bndFile ->
+
+		def bndProperties = new Properties()
+
+		bndFile.withInputStream {
+			bndProperties.load it
+		}
+
+		bndInstructions.addAll(bndProperties.stringPropertyNames())
+	}
+
+	bndInstructions.each {
+		println it
+	}
+}
+
+checkCache << {
+	gradleCacheDir.eachFileRecurse(FileType.FILES) {
+		File file ->
+
+		String sha1 = _getSHA1(file)
+
+		if (file.parentFile.name != sha1) {
+			println "This file is in a directory with a wrong SHA1: " + file
+		}
+	}
+}
+
+copyLibToCache << {
+	_copyLibToCache(project, gradleCacheDir, project.properties["libGroup"], project.properties["libName"], project.properties["libVersion"], project.properties["libClassifier"])
+}
+
+copyLibsToCache {
+	doLast {
+		File libsFile = file("libs.txt")
+
+		libsFile.eachLine {
+			String line ->
+
+			List<String> tokens = line.tokenize(":")
+
+			String libGroup = null
+			String libName = null
+			String libVersion = null
+			String libClassifier = null
+
+			if (tokens.size() == 2) {
+				libGroup = "com.liferay"
+				libName = tokens[0]
+				libVersion = tokens[1]
+			}
+			else {
+				libGroup = tokens[0]
+				libName = tokens[1]
+				libVersion = tokens[2]
+
+				if (tokens.size() == 4) {
+					libClassifier = tokens[3]
+				}
+			}
+
+			_copyLibToCache(project, gradleCacheDir, libGroup, libName, libVersion, libClassifier)
+		}
+	}
+
+	finalizedBy {
+		fixCache
+	}
+}
+
+copyRemoteLibToCache << {
+	if (!project.hasProperty("libGroup") || !project.hasProperty("libName") || !project.hasProperty("libVersion")) {
+		throw new GradleException("libGroup, libName, and libVersion are required")
+	}
+
+	def dependency = dependencies.create group: libGroup, name: libName, version: libVersion
+
+	def configuration = configurations.detachedConfiguration dependency
+
+	configuration.resolve()
+}
+
+deleteIvyXml {
+	delete fileTree(dir: modulesDir, include: "**/ivy.xml")
+}
+
+fixBnd << {
+	ant.fixcrlf eof: "remove", fixlast: false, includes: "**/bnd.bnd", srcDir: modulesDir, tab: "add", tablength: 4
+
+	def bndFiles = fileTree(dir: modulesDir, include: "**/bnd.bnd")
+
+	bndFiles.each {
+		it.text = it.text.trim()
+	}
+}
+
+fixCache << {
+	gradleCacheDir.eachFileRecurse(FileType.FILES) {
+		def file ->
+
+		if (file.name.endsWith(".pom")) {
+			def charsetToolkit = new CharsetToolkit(file)
+			def charset = charsetToolkit.charset.name()
+
+			ant.fixcrlf encoding: charset, eol: "lf", file: file, fixlast: false, outputencoding: "UTF-8"
+		}
+
+		def sha1 = _getSHA1(file)
+
+		def dir = file.parentFile
+
+		if (dir.name != sha1) {
+			def success = dir.renameTo(new File(dir.parentFile, sha1))
+
+			if (success) {
+				println "Succesfully moved " + dir
+			}
+			else {
+				delete dir
+
+				println "Deleted " + dir
+			}
+		}
+	}
+}
+
+replaceBuildXml << {
+	def buildXmlFileTree = fileTree(dir: modulesDir, include: "**/build.xml")
+
+	def buildModuleXmlPath = new File(modulesDir, "build-module.xml").toPath()
+
+	buildXmlFileTree.each {
+		def buildXmlFile ->
+
+		if (buildXmlFile.parentFile.name != "samples") {
+			def parentPath = buildXmlFile.parentFile.toPath()
+
+			def buildModuleXmlFileName = parentPath.relativize(buildModuleXmlPath).toString()
+
+			buildModuleXmlFileName = buildModuleXmlFileName.replace('\\', '/')
+
+			buildXmlFile.text = """\
+<?xml version=\"1.0\"?>
+<!DOCTYPE project>
+
+<project>
+	<import file=\"${buildModuleXmlFileName}\" />
+</project>"""
+		}
+	}
+}
+
+wrapper {
+	gradleVersion = "2.10"
+}
+
+writeSettingsIncludes << {
+	def settingsIncludes = []
+
+	def xmlParser = new XmlParser()
+
+	xmlParser.setFeature "http://apache.org/xml/features/disallow-doctype-decl", false
+
+	def buildXmlFile = new File(modulesDir, "build.xml")
+
+	def projectNode = xmlParser.parse(buildXmlFile)
+
+	projectNode.path.dirset.each {
+		def node ->
+
+		def dir = node.attribute("dir")
+		def excludes = node.attribute("excludes") ?: ""
+		def includes = node.attribute("includes") ?: ""
+
+		def dirNames = excludes.tokenize(",")
+
+		dirNames.each {
+			def dirName ->
+
+			settingsIncludes << "exclude \"${dir}/${dirName}/build.gradle\""
+		}
+
+		dirNames = includes.tokenize(",")
+
+		dirNames.each {
+			def dirName ->
+
+			settingsIncludes << "include \"${dir}/${dirName}/build.gradle\""
+		}
+	}
+
+	settingsIncludes.sort()
+
+	def settingsIncludesFile = file("tmp/settings-includes.gradle")
+
+	settingsIncludesFile.parentFile.mkdirs()
+
+	settingsIncludesFile.withWriter {
+		def writer ->
+
+		def previousTitle
+
+		settingsIncludes.each {
+			def title = it.substring(0, it.indexOf(' '))
+
+			if (previousTitle && (previousTitle != title)) {
+				writer.writeLine
+			}
+
+			writer.write "\t\t"
+			writer.writeLine it
+		}
+	}
+}
+
+private void _copyLibToCache(Project project, File gradleCacheDir, String libGroup, String libName, String libVersion, String libClassifier) {
+	if (!libGroup || !libName || !libVersion) {
+		throw new GradleException("libGroup, libName, and libVersion are required")
+	}
+
+	String mavenLibGroup = libGroup.replace('.', '/')
+
+	File gradleLibDir = new File(gradleCacheDir, "${libGroup}/${libName}/${libVersion}")
+	File mavenLibDir = new File(System.getProperty("user.home"), ".m2/repository/${mavenLibGroup}/${libName}/${libVersion}")
+
+	["jar", "pom"].each {
+		String extension ->
+
+		String sourceFileName = "${libName}-${libVersion}"
+
+		if (libClassifier) {
+			if (extension != "jar") {
+				return
+			}
+
+			sourceFileName += "-${libClassifier}"
+		}
+
+		sourceFileName += ".${extension}"
+
+		File sourceFile = new File(mavenLibDir, sourceFileName)
+
+		if (!sourceFile.exists()) {
+			String sourceUrl = "https://repository.liferay.com/nexus/content/groups/public/${mavenLibGroup}/${libName}/${libVersion}/${sourceFileName}"
+
+			try {
+				project.download {
+					dest buildDir
+					src sourceUrl
+				}
+			}
+			catch (Exception e) {
+				println e
+
+				return
+			}
+
+			sourceFile = new File(buildDir, sourceFileName)
+		}
+
+		String sha1 = _getSHA1(sourceFile)
+
+		project.copy {
+			from sourceFile
+			into new File(gradleLibDir, sha1)
+		}
+	}
+}
+
+private String _getSHA1(File file) {
+	file.withInputStream {
+		String sha1 = DigestUtils.sha1Hex(it)
+
+		StringUtils.stripStart(sha1, "0")
+	}
+}
