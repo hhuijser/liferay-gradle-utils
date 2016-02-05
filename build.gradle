@@ -116,6 +116,10 @@ copyLibsToCache {
 		libsFile.eachLine {
 			String line ->
 
+			if (line.startsWith("#")) {
+				return
+			}
+
 			List<String> tokens = line.tokenize(":")
 
 			String libGroup = null
