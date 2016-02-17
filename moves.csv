@@ -1,6 +1,5 @@
 Current parent dir,Directory to move,Target dir,Notes
 modules/apps,screens,screens,
-modules/apps,search,portal-search,This subdirectory of apps should go to the existing modules/portal-search dir
 modules/apps,sync,sync,
 modules/apps,configuration-admin,admin,
 modules/apps,expando,admin,
@@ -22,8 +21,6 @@ modules/apps,calendar,business-productivity,
 modules/apps,dynamic-data-lists,business-productivity,
 modules/apps,dynamic-data-mapping,business-productivity,
 modules/apps,polls,business-productivity,
-modules/apps,workflow,business-productivity,
-modules,portal-workflow,business-productivity,The existing dir called portal-workflow should be moved within business-productivity
 modules/apps,announcements,collaboration,
 modules/apps,blogs,collaboration,
 modules/apps,directory,collaboration,
