@@ -209,26 +209,13 @@ fixCache << {
 }
 
 moveModules << {
-	def buildGradleReplacements = [:]
+	def moveDirs = [:]
 
 	def movesFile = file("moves.csv")
 
-	def modulesDirPath = modulesDir.toPath()
+	def moveLines = movesFile.readLines()
 
-	Closure getBuildGradleReplacement = {
-		dir ->
-
-		def projectPath = modulesDirPath.relativize(dir.toPath()).toString()
-
-		projectPath = projectPath.replace(File.separatorChar, ':' as char)
-		projectPath = projectPath.replace('/' as char, ':' as char)
-
-		return "\":" + projectPath + ":"
-	}
-
-	def moves = movesFile.readLines()
-
-	moves.each {
+	moveLines.each {
 		if (!it.startsWith("modules")) {
 			println "Ignoring " + it
 
@@ -254,23 +241,62 @@ moveModules << {
 
 		println "Moved ${oldDir} to ${newDir}"
 
-		buildGradleReplacements[getBuildGradleReplacement(oldDir)] = getBuildGradleReplacement(newDir)
+		moveDirs[oldDir] = newDir
 	}
+
+	Closure doReplace = {
+		file, replaceClosure ->
+
+		def content = file.text
+
+		def newContent = content
+
+		moveDirs.each {
+			oldDir, newDir ->
+
+			newContent = newContent.replace replaceClosure(oldDir), replaceClosure(newDir)
+		}
+
+		if (content != newContent) {
+			file.text = newContent
+
+			println "Updated " + file
+		}
+	}
+
+	// build.gradle
 
 	def buildGradleFiles = fileTree(dir: modulesDir, include: "**/build.gradle")
 
 	buildGradleFiles.each {
-		def content = it.text
+		doReplace it, {
+			dir ->
 
-		buildGradleReplacements.each {
-			key, value ->
+			def modulesDirPath = modulesDir.toPath()
 
-			content.replace key, value
+			def path = modulesDirPath.relativize(dir.toPath()).toString()
+
+			path = path.replace(File.separatorChar, ':' as char)
+			path = path.replace('/' as char, ':' as char)
+
+			return "\":" + path + ":"
 		}
+	}
 
-		it.text = content
+	// source-formatter.properties and Java files
 
-		println "Updated " + it
+	FileTree fileTree = fileTree(dir: modulesDir.parentFile, includes: ["source-formatter.properties", "modules/**/*.java"])
+
+	fileTree.each {
+		doReplace it, {
+			dir ->
+
+			def modulesDirPath = modulesDir.toPath()
+
+			def path = modulesDirPath.relativize(dir.toPath()).toString()
+
+			return path.replace(File.separatorChar, '/' as char)
+		}
 	}
 }
 
