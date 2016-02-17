@@ -47,6 +47,7 @@ task copyRemoteLibToCache
 task deleteIvyXml(type: Delete)
 task fixBnd
 task fixCache
+task moveModules
 task replaceBuildXml
 task wrapper(type: Wrapper)
 task writeSettingsIncludes
@@ -204,6 +205,72 @@ fixCache << {
 				println "Deleted " + dir
 			}
 		}
+	}
+}
+
+moveModules << {
+	def buildGradleReplacements = [:]
+
+	def movesFile = file("moves.csv")
+
+	def modulesDirPath = modulesDir.toPath()
+
+	Closure getBuildGradleReplacement = {
+		dir ->
+
+		def projectPath = modulesDirPath.relativize(dir.toPath()).toString()
+
+		projectPath = projectPath.replace(File.separatorChar, ':' as char)
+		projectPath = projectPath.replace('/' as char, ':' as char)
+
+		return "\":" + projectPath + ":"
+	}
+
+	def moves = movesFile.readLines()
+
+	moves.each {
+		if (!it.startsWith("modules")) {
+			println "Ignoring " + it
+
+			return
+		}
+
+		def tokens = it.tokenize(",")
+
+		def oldParentDir = new File(modulesDir.parentFile, tokens[0])
+		def dirName = tokens[1]
+		def newParentDir = new File(modulesDir, tokens[2])
+
+		def oldDir = new File(oldParentDir, dirName)
+		def newDir = new File(newParentDir, dirName)
+
+		newParentDir.mkdirs()
+
+		def moved = oldDir.renameTo(newDir)
+
+		if (!moved) {
+			throw new GradleException("Unable to move ${oldDir} to ${newDir}")
+		}
+
+		println "Moved ${oldDir} to ${newDir}"
+
+		buildGradleReplacements[getBuildGradleReplacement(oldDir)] = getBuildGradleReplacement(newDir)
+	}
+
+	def buildGradleFiles = fileTree(dir: modulesDir, include: "**/build.gradle")
+
+	buildGradleFiles.each {
+		def content = it.text
+
+		buildGradleReplacements.each {
+			key, value ->
+
+			content.replace key, value
+		}
+
+		it.text = content
+
+		println "Updated " + it
 	}
 }
 
