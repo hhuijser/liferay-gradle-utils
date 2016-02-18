@@ -376,6 +376,12 @@ replaceBuildXml << {
 		if (buildXmlFile.parentFile.name != "samples") {
 			def parentPath = buildXmlFile.parentFile.toPath()
 
+			def content = buildXmlFile.text
+
+			if (content.contains("build-theme.xml")) {
+				return
+			}
+
 			def buildModuleXmlFileName = parentPath.relativize(buildModuleXmlPath).toString()
 
 			buildModuleXmlFileName = buildModuleXmlFileName.replace('\\', '/')
