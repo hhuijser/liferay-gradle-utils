@@ -398,7 +398,7 @@ replaceBuildXml << {
 }
 
 wrapper {
-	gradleVersion = "2.10"
+	gradleVersion = "2.11"
 }
 
 writeSettingsIncludes << {
