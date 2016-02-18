@@ -208,6 +208,10 @@ fixCache << {
 	}
 }
 
+moveModules {
+	finalizedBy replaceBuildXml
+}
+
 moveModules << {
 	def moveDirs = [:]
 
@@ -232,6 +236,18 @@ moveModules << {
 		def newDir = new File(newParentDir, dirName)
 
 		newParentDir.mkdirs()
+
+		def dir = newParentDir
+
+		while ((dir != null) && (dir != modulesDir)) {
+			def buildXmlFile = new File(dir, "build.xml")
+
+			if (!buildXmlFile.exists()) {
+				buildXmlFile.text = "REPLACEME!"
+			}
+
+			dir = dir.parentFile
+		}
 
 		def moved = oldDir.renameTo(newDir)
 
