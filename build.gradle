@@ -262,7 +262,7 @@ moveModules {
 }
 
 moveModules << {
-	File marketplaceDir = new File(modulesDir, "marketplace")
+	File marketplaceDir = new File(modulesDir, "apps/marketplace")
 
 	if (marketplaceDir.exists()) {
 		throw new GradleException("Please rename " + marketplaceDir + ", it messes with the bnd.bnd relative path replacement")
