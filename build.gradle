@@ -308,21 +308,31 @@ replaceBuildXml << {
 	buildXmlFileTree.each {
 		def buildXmlFile ->
 
-		if (buildXmlFile.parentFile.name != "samples") {
-			def parentPath = buildXmlFile.parentFile.toPath()
+		def parentDir = buildXmlFile.parentFile
 
-			def buildModuleXmlFileName = parentPath.relativize(buildModuleXmlPath).toString()
+		if (parentDir.name == "samples") {
+			while (parentDir != null) {
+				if (parentDir.name == "sdk") {
+					return
+				}
 
-			buildModuleXmlFileName = buildModuleXmlFileName.replace('\\', '/')
+				parentDir = parentDir.parentFile
+			}
+		}
 
-			buildXmlFile.text = """\
+		def parentPath = buildXmlFile.parentFile.toPath()
+
+		def buildModuleXmlFileName = parentPath.relativize(buildModuleXmlPath).toString()
+
+		buildModuleXmlFileName = buildModuleXmlFileName.replace('\\', '/')
+
+		buildXmlFile.text = """\
 <?xml version=\"1.0\"?>
 <!DOCTYPE project>
 
 <project>
 	<import file=\"${buildModuleXmlFileName}\" />
 </project>"""
-		}
 	}
 }
 
