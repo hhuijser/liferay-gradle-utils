@@ -43,6 +43,7 @@ task checkBndInstructions
 task checkCache
 task copyLibToCache
 task copyLibsToCache
+task checkMPBnd
 task copyRemoteLibToCache
 task deleteIvyXml(type: Delete)
 task fixBnd
@@ -102,6 +103,54 @@ checkCache << {
 
 		if (file.parentFile.name != sha1) {
 			println "This file is in a directory with a wrong SHA1: " + file
+		}
+	}
+}
+
+checkMPBnd << {
+	def appPackages = new HashMap<String, Set<String>>()
+
+	def bndFileTree = fileTree(dir: new File(modulesDir, "../marketplace"), include: "*/bnd.bnd")
+
+	bndFileTree.each {
+		File bndFile ->
+
+		def bndProperties = new Properties()
+
+		bndFile.withInputStream {
+			bndProperties.load it
+		}
+
+		def appsString = bndProperties["Liferay-Releng-Dependent-Apps"]
+
+		def apps = appsString.tokenize(",")
+
+		apps.each {
+			app ->
+
+			app = app.trim()
+
+			def index = app.indexOf(":")
+
+			app = app.substring(0, index)
+
+			Set<String> packages = appPackages[app]
+
+			if (packages == null) {
+				packages = new HashSet<String>()
+
+				appPackages[app] = packages
+			}
+
+			packages << bndFile.parentFile.name
+		}
+	}
+
+	appPackages.each {
+		app, packages ->
+
+		if (packages.size() > 1) {
+			println "${app} is in ${packages}"
 		}
 	}
 }
