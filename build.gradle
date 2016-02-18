@@ -329,7 +329,7 @@ moveModules << {
 		}
 	}
 
-	// build.gradle
+	// Replace project paths in build.gradle
 
 	def buildGradleFiles = fileTree(dir: modulesDir, include: "**/build.gradle")
 
@@ -348,7 +348,7 @@ moveModules << {
 		}
 	}
 
-	// source-formatter.properties and other files
+	// Replace file paths source-formatter.properties and other files
 
 	FileTree fileTree = fileTree(dir: modulesDir.parentFile, includes: ["source-formatter.properties", "modules/**/*.bnd", "modules/**/*.java"])
 
