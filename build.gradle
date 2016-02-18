@@ -355,7 +355,7 @@ moveModules << {
 			def content = bndFile.text
 
 			def newContent = content.replaceAll(
-				/((?:\.\.\/)+\w+?)\//,
+				/((?:\.\.\/)+[\w-]+?)\//,
 				{
 					def pointedFile = new File(bndDir, it[1])
 
