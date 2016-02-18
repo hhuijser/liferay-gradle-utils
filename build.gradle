@@ -230,7 +230,7 @@ moveModules << {
 
 		def oldParentDir = new File(modulesDir.parentFile, tokens[0])
 		def dirName = tokens[1]
-		def newParentDir = new File(modulesDir, tokens[2])
+		def newParentDir = new File(new File(modulesDir, "apps"), tokens[2])
 
 		def oldDir = new File(oldParentDir, dirName)
 		def newDir = new File(newParentDir, dirName)
