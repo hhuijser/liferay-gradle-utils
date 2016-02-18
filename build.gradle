@@ -262,7 +262,14 @@ moveModules {
 }
 
 moveModules << {
+	File marketplaceDir = new File(modulesDir, "marketplace")
+
+	if (marketplaceDir.exists()) {
+		throw new GradleException("Please rename " + marketplaceDir + ", it messes with the bnd.bnd relative path replacement")
+	}
+
 	def moveDirs = [:]
+	def moveParentDirs = new HashSet<File>()
 
 	def movesFile = file("moves.csv")
 
@@ -280,6 +287,8 @@ moveModules << {
 		def oldParentDir = new File(modulesDir.parentFile, tokens[0])
 		def dirName = tokens[1]
 		def newParentDir = new File(new File(modulesDir, "apps"), tokens[2])
+
+		moveParentDirs << newParentDir
 
 		def oldDir = new File(oldParentDir, dirName)
 		def newDir = new File(newParentDir, dirName)
@@ -326,6 +335,44 @@ moveModules << {
 			file.text = newContent
 
 			println "Updated " + file
+		}
+	}
+
+	// Replace relative paths in bnd.bnd
+
+	moveParentDirs.each {
+		parentDir ->
+
+		def bndFileTree = fileTree(dir: parentDir, include: "**/*.bnd")
+
+		bndFileTree.each {
+			bndFile ->
+
+			def bndDir = bndFile.parentFile
+
+			def bndDirPath = bndDir.toPath()
+
+			def content = bndFile.text
+
+			def newContent = content.replaceAll(
+				/((?:\.\.\/)+\w+?)\//,
+				{
+					def pointedFile = new File(bndDir, it[1])
+
+					while (!pointedFile.exists()) {
+						pointedFile = new File(pointedFile.parentFile.parentFile, pointedFile.name)
+					}
+
+					def pointedPath = bndDirPath.relativize(pointedFile.toPath()).toString()
+
+					return pointedPath.replace(File.separatorChar, '/' as char) + "/"
+				})
+
+			if (content != newContent) {
+				bndFile.text = newContent
+
+				println "Updated " + bndFile
+			}
 		}
 	}
 
