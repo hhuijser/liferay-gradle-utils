@@ -291,6 +291,13 @@ moveModules << {
 		moveParentDirs << newParentDir
 
 		def oldDir = new File(oldParentDir, dirName)
+
+		if (!oldDir.exists()) {
+			println "Ignoring ${oldDir} because it does not exist"
+
+			return
+		}
+
 		def newDir = new File(newParentDir, dirName)
 
 		newParentDir.mkdirs()
