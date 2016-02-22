@@ -345,6 +345,10 @@ moveModules << {
 		}
 	}
 
+	if (Boolean.getBoolean("skip.replace")) {
+		return
+	}
+
 	// Replace relative paths in bnd.bnd
 
 	moveParentDirs.each {
