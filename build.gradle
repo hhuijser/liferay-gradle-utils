@@ -404,7 +404,7 @@ moveModules << {
 
 	// Replace file paths source-formatter.properties and other files
 
-	FileTree fileTree = fileTree(dir: modulesDir.parentFile, includes: ["source-formatter.properties", "modules/**/*.bnd", "modules/**/*.java"])
+	FileTree fileTree = fileTree(dir: modulesDir.parentFile, includes: ["build.properties", "source-formatter.properties", "modules/**/*.bnd", "modules/**/*.java"])
 
 	fileTree.each {
 		doReplace it, {
