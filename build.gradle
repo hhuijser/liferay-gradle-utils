@@ -354,7 +354,7 @@ moveModules << {
 	moveParentDirs.each {
 		parentDir ->
 
-		def bndFileTree = fileTree(dir: parentDir, include: "**/*.bnd")
+		def bndFileTree = fileTree(dir: parentDir, exclude: "**/src/**/*.bnd", include: "**/*.bnd")
 
 		bndFileTree.each {
 			bndFile ->
@@ -371,7 +371,21 @@ moveModules << {
 					def pointedFile = new File(bndDir, it[1])
 
 					while (!pointedFile.exists()) {
-						pointedFile = new File(pointedFile.parentFile.parentFile, pointedFile.name)
+						def dir = pointedFile.parentFile.parentFile
+
+						if (!dir) {
+							pointedFile = null
+
+							break
+						}
+
+						pointedFile = new File(dir, pointedFile.name)
+					}
+
+					if (pointedFile == null) {
+						println "Unable to replace ${it[1]} in ${bndFile}"
+
+						return it[1]
 					}
 
 					def pointedPath = bndDirPath.relativize(pointedFile.toPath()).toString()
@@ -408,7 +422,7 @@ moveModules << {
 
 	// Replace file paths source-formatter.properties and other files
 
-	FileTree fileTree = fileTree(dir: modulesDir.parentFile, includes: ["build.properties", "source-formatter.properties", "modules/**/*.bnd", "modules/**/*.java"])
+	FileTree fileTree = fileTree(dir: modulesDir.parentFile, includes: ["source-formatter.properties", "modules/**/*.bnd", "modules/**/*.java"])
 
 	fileTree.each {
 		doReplace it, {
@@ -418,7 +432,7 @@ moveModules << {
 
 			def path = modulesDirPath.relativize(dir.toPath()).toString()
 
-			return path.replace(File.separatorChar, '/' as char)
+			return "modules/" + path.replace(File.separatorChar, '/' as char) + "/"
 		}
 	}
 }
