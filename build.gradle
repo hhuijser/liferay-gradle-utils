@@ -25,7 +25,10 @@ plugins {
 defaultTasks "copyLibsToCache"
 
 ext {
-	modulesDir = new File("S:/lr/liferay-portal/modules")
+	portalDir = new File("S:/lr/liferay-portal")
+	portal62Dir = new File("S:/lr/liferay-portal-6.2.x")
+
+	modulesDir = new File(portalDir, "modules")
 }
 
 repositories {
@@ -48,6 +51,7 @@ task copyRemoteLibToCache
 task deleteIvyXml(type: Delete)
 task fixBnd
 task fixCache
+task fixPackageInfo
 task moveModules
 task replaceBuildXml
 task wrapper(type: Wrapper)
@@ -252,6 +256,46 @@ fixCache << {
 				delete dir
 
 				println "Deleted " + dir
+			}
+		}
+	}
+}
+
+fixPackageInfo << {
+	def rootDir = new File(portalDir, "portal-kernel/src/com/liferay")
+	def oldRootDir = new File(portal62Dir, "portal-service/src/com/liferay")
+
+	def rootDirPath = rootDir.toPath()
+
+	rootDir.eachDirRecurse {
+		dir ->
+
+		def packageInfoFile = new File(dir, "packageinfo")
+
+		def javaFileTree = fileTree(dir: dir, include: "*.java")
+
+		if (javaFileTree.empty) {
+			if (packageInfoFile.exists()) {
+				delete packageInfoFile
+
+				println "Deleted " + packageInfoFile
+			}
+
+			return
+		}
+
+		def relativePath = rootDirPath.relativize(dir.toPath()).toString()
+
+		def oldDir = new File(oldRootDir, relativePath)
+
+		if (oldDir.exists()) {
+			if (!packageInfoFile.exists() || !packageInfoFile.text.startsWith("version 7")) {
+				packageInfoFile.text = "version 7.0.0"
+			}
+		}
+		else {
+			if (!packageInfoFile.exists() || packageInfoFile.text.startsWith("version 7")) {
+				packageInfoFile.text = "version 1.0.0"
 			}
 		}
 	}
