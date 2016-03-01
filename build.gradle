@@ -286,7 +286,7 @@ moveModules << {
 
 		def oldParentDir = new File(modulesDir.parentFile, tokens[0])
 		def dirName = tokens[1]
-		def newParentDir = new File(new File(modulesDir, "apps"), tokens[2])
+		def newParentDir = new File(modulesDir, tokens[2])
 
 		moveParentDirs << newParentDir
 
@@ -373,19 +373,17 @@ moveModules << {
 					while (!pointedFile.exists()) {
 						def dir = pointedFile.parentFile.parentFile
 
-						if (!dir) {
+						if (dir == null) {
 							pointedFile = null
 
 							break
 						}
 
-						pointedFile = new File(dir, pointedFile.name)
+						pointedFile = new File(pointedFile.parentFile.parentFile, pointedFile.name)
 					}
 
 					if (pointedFile == null) {
-						println "Unable to replace ${it[1]} in ${bndFile}"
-
-						return it[1]
+						return null
 					}
 
 					def pointedPath = bndDirPath.relativize(pointedFile.toPath()).toString()
@@ -416,13 +414,30 @@ moveModules << {
 			path = path.replace(File.separatorChar, ':' as char)
 			path = path.replace('/' as char, ':' as char)
 
-			return "\":" + path + ":"
+			path = "\":" + path + ":"
+
+			return path
+		}
+
+		doReplace it, {
+			dir ->
+
+			def modulesDirPath = modulesDir.toPath()
+
+			def path = modulesDirPath.relativize(dir.toPath()).toString()
+
+			path = path.replace(File.separatorChar, ':' as char)
+			path = path.replace('/' as char, ':' as char)
+
+			path = "\":" + path + "\""
+
+			return path
 		}
 	}
 
 	// Replace file paths source-formatter.properties and other files
 
-	FileTree fileTree = fileTree(dir: modulesDir.parentFile, includes: ["source-formatter.properties", "modules/**/*.bnd", "modules/**/*.java"])
+	FileTree fileTree = fileTree(dir: modulesDir.parentFile, includes: ["build.properties", "source-formatter.properties", "modules/**/*.bnd", "modules/**/*.java"])
 
 	fileTree.each {
 		doReplace it, {
