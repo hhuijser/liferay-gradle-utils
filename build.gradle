@@ -122,6 +122,14 @@ checkBndServiceInstructions {
 			return
 		}
 
+		def dir = bndFile.parentFile
+
+		def buildGradleFile = new File(dir, "build.gradle")
+
+		if (!buildGradleFile.text.contains("com.liferay.portal.spring.extender")) {
+			throw new GradleException("Unable to find 'com.liferay.portal.spring.extender' in ${buildGradleFile}")
+		}
+
 		expectedProperties.each {
 			k, v ->
 
@@ -130,7 +138,7 @@ checkBndServiceInstructions {
 			}
 		}
 
-		println "Checked ${bndFile}"
+		println "Checked ${dir}"
 	}
 }
 
