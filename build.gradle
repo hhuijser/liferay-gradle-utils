@@ -100,7 +100,7 @@ checkBndInstructions << {
 	}
 }
 
-checkBndServiceInstructions {
+checkBndServiceInstructions << {
 	def bndFiles = fileTree(dir: modulesDir, include: "**/bnd.bnd")
 
 	def expectedProperties = [:]
