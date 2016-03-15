@@ -54,6 +54,7 @@ task fixBnd
 task fixCache
 task fixPackageInfo
 task moveModules
+task removeTouch
 task replaceBuildXml
 task wrapper(type: Wrapper)
 task writeSettingsIncludes
@@ -547,6 +548,33 @@ moveModules << {
 			def path = modulesDirPath.relativize(dir.toPath()).toString()
 
 			return "modules/" + path.replace(File.separatorChar, '/' as char) + "/"
+		}
+	}
+}
+
+removeTouch << {
+	def touchFileTree = fileTree(dir: modulesDir, include: "**/.touch")
+
+	touchFileTree.each {
+		touchFile ->
+
+		def touchFilePath = touchFile.absolutePath
+
+		touchFilePath = touchFilePath.replace(File.separatorChar, '/' as char)
+
+		if (!touchFilePath.endsWith("/src/main/resources/.touch")) {
+			println "Ignoring ${touchFile}"
+
+			return
+		}
+
+		def srcDir = touchFile.parentFile.parentFile.parentFile
+
+		def testDir = new File(srcDir, "test")
+		def testIntegrationDir = new File(srcDir, "testIntegration")
+
+		if (testDir.exists() || testIntegrationDir.exists()) {
+			delete touchFile
 		}
 	}
 }
