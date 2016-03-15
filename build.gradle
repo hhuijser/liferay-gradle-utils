@@ -73,6 +73,18 @@ checkBndInclude << {
 		String include = bndProperties["-include"]
 
 		if (include) {
+			def includeList = include.tokenize(",")
+
+			def dir = bndFile.parentFile
+
+			includeList.each {
+				def includedFile = new File(dir, it)
+
+				if (!includedFile.exists()) {
+					throw new GradleException("${includedFile.canonicalPath} is included in ${bndFile} but it does not exist")
+				}
+			}
+
 			println include
 		}
 	}
