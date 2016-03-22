@@ -53,6 +53,7 @@ task deleteIvyXml(type: Delete)
 task fixBnd
 task fixCache
 task fixPackageInfo
+task moveLPS64532
 task moveModules
 task removeTouch
 task replaceBuildXml
@@ -352,6 +353,42 @@ fixPackageInfo << {
 		else {
 			if (!packageInfoFile.exists() || packageInfoFile.text.startsWith("version 7")) {
 				packageInfoFile.text = "version 1.0.0"
+			}
+		}
+	}
+}
+
+moveLPS64532 << {
+	def buildGradleFiles = fileTree(dir: modulesDir, include: "**/build.gradle")
+
+	def destRootDir = new File(modulesDir, ".releng")
+	def modulesDirPath = modulesDir.toPath()
+
+	buildGradleFiles.each {
+		buildGradleFile ->
+
+		def dir = buildGradleFile.parentFile
+
+		def relativePath = modulesDirPath.relativize(dir.toPath()).toString()
+
+		def destDir = new File(destRootDir, relativePath)
+
+		destDir.mkdirs()
+
+		["artifact.properties", "src/main/resources/META-INF/liferay-releng.changelog"].each {
+			File srcFile = new File(dir, it)
+
+			if (srcFile.exists()) {
+				def destFile = new File(destDir, srcFile.name)
+
+				def moved = srcFile.renameTo destFile
+
+				if (moved) {
+					println "${srcFile} -> ${destFile}"
+				}
+				else {
+					throw new GradleException("Unable to move ${srcFile} to ${destFile}")
+				}
 			}
 		}
 	}
