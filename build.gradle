@@ -1,3 +1,5 @@
+import java.util.zip.ZipFile
+
 import groovy.io.FileType
 
 import org.apache.commons.codec.digest.DigestUtils
@@ -28,6 +30,7 @@ ext {
 	portalDir = new File("S:/lr/liferay-portal")
 	portal62Dir = new File("S:/lr/liferay-portal-6.2.x")
 
+	gradleCacheDir = new File(portalDir, ".gradle/caches/modules-2/files-2.1")
 	modulesDir = new File(portalDir, "modules")
 }
 
@@ -39,11 +42,10 @@ repositories {
 	}
 }
 
-File gradleCacheDir = new File(modulesDir, "../.gradle/caches/modules-2/files-2.1")
-
 task checkBndInclude
 task checkBndInstructions
 task checkBndServiceInstructions
+task checkBrokenJarsKernel
 task checkCache
 task copyLibToCache
 task copyLibsToCache
@@ -153,6 +155,24 @@ checkBndServiceInstructions << {
 		}
 
 		println "Checked ${dir}"
+	}
+}
+
+checkBrokenJarsKernel << {
+	def jarFileTree = fileTree(dir: gradleCacheDir, include: "com.liferay/**/*.jar")
+
+	jarFileTree.each {
+		jarFile ->
+
+		def zipFile = new ZipFile(jarFile)
+
+		zipFile.entries().each {
+			zipEntry ->
+
+			if (zipEntry.directory && zipEntry.name.endsWith("/kernel/")) {
+				println jarFile
+			}
+		}
 	}
 }
 
