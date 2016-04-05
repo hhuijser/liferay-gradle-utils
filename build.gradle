@@ -59,6 +59,7 @@ task moveLPS64532
 task moveModules
 task removeTouch
 task replaceBuildXml
+task replaceProjectDeps
 task wrapper(type: Wrapper)
 task writeSettingsIncludes
 
@@ -665,6 +666,56 @@ replaceBuildXml << {
 	<import file=\"${buildModuleXmlFileName}\" />
 </project>"""
 		}
+	}
+}
+
+replaceProjectDeps << {
+	def projectDepsReplacements = [:]
+
+	def group = "com.liferay"
+
+	def groupCacheDir = new File(gradleCacheDir, group)
+
+	def projectDepsFile = file("project_deps.txt")
+
+	projectDepsFile.each {
+		projectDep ->
+
+		def index = projectDep.lastIndexOf(":")
+
+		def name = projectDep.substring(index + 1, projectDep.length() - 2)
+
+		def artifactName = group + "." + name.replace('-' as char, '.' as char)
+
+		def artifactCacheDir = new File(groupCacheDir, artifactName)
+
+		if (!artifactCacheDir.exists()) {
+			println "Unable to find ${artifactCacheDir}"
+
+			return
+		}
+
+		def version = artifactCacheDir.list().first()
+
+		def artifactDep = "group: \"${group}\", name: \"${artifactName}\", version: \"${version}\""
+
+		projectDepsReplacements[projectDep] = artifactDep
+	}
+
+	def buildGradleFileTree = fileTree(dir: new File(modulesDir, "ee"), include: "**/build.gradle")
+
+	buildGradleFileTree.each {
+		buildGradleFile ->
+
+		def buildGradle = buildGradleFile.text
+
+		projectDepsReplacements.each {
+			k, v ->
+
+			buildGradle = buildGradle.replace(k, v)
+		}
+
+		buildGradleFile.text = buildGradle
 	}
 }
 
