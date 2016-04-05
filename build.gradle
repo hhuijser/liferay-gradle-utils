@@ -397,6 +397,8 @@ initSeparateRepos << {
 		def settingsGradleFile = new File(gitRepoDir, "settings.gradle")
 
 		if (settingsGradleFile.exists()) {
+			delete fileTree(dir: gitRepoDir, include: "**/build.xml")
+
 			return
 		}
 
