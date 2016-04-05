@@ -55,6 +55,7 @@ task deleteIvyXml(type: Delete)
 task fixBnd
 task fixCache
 task fixPackageInfo
+task initSeparateRepos
 task moveLPS64532
 task moveModules
 task removeTouch
@@ -376,6 +377,56 @@ fixPackageInfo << {
 				packageInfoFile.text = "version 1.0.0"
 			}
 		}
+	}
+}
+
+initSeparateRepos << {
+	def gitRepoFileTree = fileTree(dir: modulesDir, exclude: "apps/foundation/frontend-theme/", include: "**/.gitrepo")
+
+	def buildGradleTemplateFile = rootProject.file("separate_repos_build_gradle.tmpl")
+	def settingsGradleTemplateFile = rootProject.file("separate_repos_settings_gradle.tmpl")
+
+	def buildGradleTemplate = buildGradleTemplateFile.text.normalize()
+	def settingsGradleTemplate = settingsGradleTemplateFile.text.normalize()
+
+	gitRepoFileTree.each {
+		gitRepoFile ->
+
+		def gitRepoDir = gitRepoFile.parentFile
+
+		def settingsGradleFile = new File(gitRepoDir, "settings.gradle")
+
+		if (settingsGradleFile.exists()) {
+			return
+		}
+
+		def buildGradleFileTree = fileTree(dir: gitRepoDir, include: "**/build.gradle")
+
+		def buildGradles = buildGradleFileTree.inject("") {
+			acc, f ->
+
+			acc += f.text
+		}
+
+		if (buildGradles.contains(":petra:")) {
+			return
+		}
+
+		def tmpBuildGradleTemplate = buildGradleTemplate
+
+		["cache", "lang.merger"].each {
+			if (!buildGradles.contains("apply plugin: \"com.liferay.${it}\"")) {
+				tmpBuildGradleTemplate = tmpBuildGradleTemplate.replace("\t\tclasspath group: \"com.liferay\", name: \"com.liferay.gradle.plugins.${it}\", version: \"latest.release\"\n", "")
+			}
+		}
+
+		settingsGradleFile.text = settingsGradleTemplate
+
+		def buildGradleFile = new File(gitRepoDir, "build.gradle")
+
+		buildGradleFile.text = tmpBuildGradleTemplate
+
+		println "Initialized " + gitRepoDir
 	}
 }
 
