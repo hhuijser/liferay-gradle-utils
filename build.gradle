@@ -410,7 +410,7 @@ initSeparateRepos << {
 			acc += f.text
 		}
 
-		if (buildGradles.contains(":petra:")) {
+		if (buildGradles.contains("project(\"")) {
 			return
 		}
 
