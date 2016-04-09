@@ -51,6 +51,7 @@ task copyLibToCache
 task copyLibsToCache
 task checkMPBnd
 task copyRemoteLibToCache
+task deleteBuildXml(type: Delete)
 task deleteIvyXml(type: Delete)
 task fixBnd
 task fixCache
@@ -294,6 +295,10 @@ copyRemoteLibToCache << {
 	def configuration = configurations.detachedConfiguration dependency
 
 	configuration.resolve()
+}
+
+deleteBuildXml {
+	delete fileTree(dir: modulesDir, exclude: "**/samples/", include: "*/**/build.xml")
 }
 
 deleteIvyXml {
