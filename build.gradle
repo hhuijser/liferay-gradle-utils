@@ -56,6 +56,7 @@ task deleteIvyXml(type: Delete)
 task fixBnd
 task fixCache
 task fixPackageInfo
+task fixSeparateRepoDeps
 task initSeparateRepos
 task moveLPS64532
 task moveModules
@@ -382,6 +383,65 @@ fixPackageInfo << {
 				packageInfoFile.text = "version 1.0.0"
 			}
 		}
+	}
+}
+
+fixSeparateRepoDeps << {
+	def buildGradleFileTree = fileTree(dir: modulesDir, include: "**/build.gradle")
+
+	def fixProjectPath = {
+		dir ->
+
+		File subRootDir = dir.parentFile
+
+		while (true) {
+			File settingsGradleFile = new File(subRootDir, "settings.gradle")
+
+			if (settingsGradleFile.exists()) {
+				break;
+			}
+
+			subRootDir = subRootDir.parentFile
+		}
+
+		URI subRootURI = subRootDir.toURI()
+
+		String dirName = subRootURI.relativize(dir.toURI())
+
+		dirName = dirName[0 .. -2]
+
+		dirName.replace("/" as char, ":" as char)
+	}
+
+	buildGradleFileTree.each {
+		buildGradleFile ->
+
+		def buildGradle = buildGradleFile.text
+
+		if (!buildGradle.contains("project(\"")) {
+			return
+		}
+
+		buildGradle = buildGradle.replaceAll(/project\(":(.+)"\)/) {
+			String projectDependency = it[0]
+			String projectPath = it[1]
+
+			def projectDirName = projectPath.replace(':' as char, File.separatorChar)
+
+			def projectDir = new File(modulesDir, projectDirName)
+
+			if (!projectDir.exists()) {
+				println "Path ${projectPath} is not relative to the modules dir, so it's probably already okay"
+
+				return projectDependency
+			}
+
+			projectPath = fixProjectPath(projectDir)
+
+			"project(\":${projectPath}\")"
+		}
+
+		buildGradleFile.text = buildGradle
 	}
 }
 
