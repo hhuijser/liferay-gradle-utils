@@ -53,10 +53,12 @@ task checkMPBnd
 task copyRemoteLibToCache
 task deleteBuildXml(type: Delete)
 task deleteIvyXml(type: Delete)
+task deletePortalBuild(type: Delete)
 task fixBnd
 task fixCache
 task fixPackageInfo
 task fixSeparateRepoDeps
+task initPortalBuild
 task initSeparateRepos
 task moveLPS64532
 task moveModules
@@ -306,6 +308,10 @@ deleteIvyXml {
 	delete fileTree(dir: modulesDir, include: "**/ivy.xml")
 }
 
+deletePortalBuild {
+	delete fileTree(dir: modulesDir, include: "**/portal.build")
+}
+
 fixBnd << {
 	ant.fixcrlf eof: "remove", fixlast: false, includes: "**/bnd.bnd", srcDir: modulesDir, tab: "add", tablength: 4
 
@@ -442,6 +448,44 @@ fixSeparateRepoDeps << {
 		}
 
 		buildGradleFile.text = buildGradle
+	}
+}
+
+initPortalBuild {
+	dependsOn deletePortalBuild
+
+	doLast {
+		def buildProperties = new Properties()
+
+		def buildPropertiesFiles = new File(portalDir, "build.properties")
+
+		buildPropertiesFiles.withInputStream {
+			buildProperties.load it
+		}
+
+		def excludes = buildProperties["build.modules.excludes"].tokenize(",")
+
+		["**/bin/", "sdk/*/samples/", "sdk/gradle-templates/classes/", "sdk/gradle-templates/src/"].each {
+			excludes.add it
+		}
+
+		def includes = buildProperties["build.modules.includes"].tokenize(",")
+
+		def includedFileTree = fileTree(dir: modulesDir, excludes: excludes, includes: includes)
+
+		includedFileTree.each {
+			def dir = it.parentFile
+
+			def settingsGradleFile = new File(dir, "settings.gradle")
+
+			if (settingsGradleFile.exists()) {
+				return
+			}
+
+			def portalBuildFile = new File(dir, "portal.build")
+
+			portalBuildFile.createNewFile()
+		}
 	}
 }
 
