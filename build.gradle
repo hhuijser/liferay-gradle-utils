@@ -503,16 +503,15 @@ initSeparateRepos << {
 
 		def gitRepoDir = gitRepoFile.parentFile
 
+		def buildGradleFile = new File(gitRepoDir, "build.gradle")
+		def settingsGradleFile = new File(gitRepoDir, "settings.gradle")
+
 		def buildGradleFileTree = fileTree(dir: gitRepoDir, include: "**/build.gradle")
 
 		def buildGradles = buildGradleFileTree.inject("") {
 			acc, f ->
 
 			acc += f.text
-		}
-
-		if (buildGradles.contains("project(\"")) {
-			return
 		}
 
 		def tmpBuildGradleTemplate = buildGradleTemplate
@@ -523,13 +522,8 @@ initSeparateRepos << {
 			}
 		}
 
-		def settingsGradleFile = new File(gitRepoDir, "settings.gradle")
-
-		settingsGradleFile.text = settingsGradleTemplate
-
-		def buildGradleFile = new File(gitRepoDir, "build.gradle")
-
 		buildGradleFile.text = tmpBuildGradleTemplate
+		settingsGradleFile.text = settingsGradleTemplate
 
 		println "Initialized " + gitRepoDir
 	}
