@@ -503,14 +503,6 @@ initSeparateRepos << {
 
 		def gitRepoDir = gitRepoFile.parentFile
 
-		def settingsGradleFile = new File(gitRepoDir, "settings.gradle")
-
-		if (settingsGradleFile.exists()) {
-			delete fileTree(dir: gitRepoDir, include: "**/build.xml")
-
-			return
-		}
-
 		def buildGradleFileTree = fileTree(dir: gitRepoDir, include: "**/build.gradle")
 
 		def buildGradles = buildGradleFileTree.inject("") {
@@ -530,6 +522,8 @@ initSeparateRepos << {
 				tmpBuildGradleTemplate = tmpBuildGradleTemplate.replace("\t\tclasspath group: \"com.liferay\", name: \"com.liferay.gradle.plugins.${it}\", version: \"latest.release\"\n", "")
 			}
 		}
+
+		def settingsGradleFile = new File(gitRepoDir, "settings.gradle")
 
 		settingsGradleFile.text = settingsGradleTemplate
 
