@@ -490,7 +490,7 @@ initPortalBuild {
 }
 
 initSeparateRepos << {
-	def gitRepoFileTree = fileTree(dir: modulesDir, exclude: "apps/foundation/frontend-theme/", include: "**/.gitrepo")
+	def gitRepoFileTree = fileTree(dir: modulesDir, include: "**/.gitrepo")
 
 	def buildGradleTemplateFile = rootProject.file("separate_repos_build_gradle.tmpl")
 	def settingsGradleTemplateFile = rootProject.file("separate_repos_settings_gradle.tmpl")
