@@ -47,6 +47,7 @@ task checkBndInstructions
 task checkBndServiceInstructions
 task checkBrokenJarsKernel
 task checkCache
+task checkPortlets
 task copyLibToCache
 task copyLibsToCache
 task checkMPBnd
@@ -239,6 +240,30 @@ checkMPBnd << {
 		if (packages.size() > 1) {
 			println "${app} is in ${packages}"
 		}
+	}
+}
+
+checkPortlets << {
+	def portletFileTree = fileTree(dir: modulesDir, excludes: ["**/portal-monitoring/", "**/portal-osgi-web-portlet-container-test/", "**/portal-portlet-bridge-soy/"], include: "**/*Portlet.java")
+
+	portletFileTree.each {
+		def dir = it.parentFile
+
+		while (true) {
+			def bndBndFile = new File(dir, "bnd.bnd")
+
+			if (bndBndFile.exists()) {
+				break
+			}
+
+			dir = dir.parentFile
+		}
+
+		if (!dir.name.endsWith("-web")) {
+			throw new GradleException("${dir.name} should ends with -web")
+		}
+
+		println "${dir.name} is okay"
 	}
 }
 
