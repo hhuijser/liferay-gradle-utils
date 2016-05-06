@@ -1,3 +1,5 @@
+import com.liferay.portal.kernel.util.UnicodeProperties
+
 import java.util.zip.ZipFile
 
 import groovy.io.FileType
@@ -8,6 +10,7 @@ import org.apache.commons.lang3.StringUtils
 
 buildscript {
 	dependencies {
+		classpath "com.liferay.portal:com.liferay.portal.kernel:latest.release"
 		classpath "commons-codec:commons-codec:1.10"
 		classpath "org.apache.commons:commons-lang3:3.4"
 	}
@@ -313,11 +316,9 @@ consolidateLang << {
 			throw new GradleException("Unable to find " + destLangFile)
 		}
 
-		Properties langProperties = new Properties()
+		UnicodeProperties langProperties = new UnicodeProperties()
 
-		langFile.withInputStream {
-			langProperties.load it
-		}
+		langProperties.load langFile.getText("UTF-8")
 
 		langKeysList.each {
 			key ->
@@ -330,7 +331,9 @@ consolidateLang << {
 				return
 			}
 
-			destLangFile << "\n${key}=${value}"
+			destLangFile.withWriterAppend("UTF-8") {
+				it.write "\n${key}=${value}"
+			}
 
 			println "Copied ${key}=${value} from ${langFile} to ${destLangFile}"
 		}
