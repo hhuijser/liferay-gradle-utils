@@ -280,7 +280,11 @@ consolidateLang << {
 
 	def langKeysList = langKeys.tokenize(",")
 
-	def moduleDir = _getModuleDir(langFrom)
+	def moduleDir = file(langFrom)
+
+	if (!moduleDir.exists()) {
+		moduleDir = _getModuleDir(langFrom)
+	}
 
 	if (moduleDir == null) {
 		throw new GradleException("Unable to find ${langFrom} in ${modulesDir}")
