@@ -1,6 +1,7 @@
 import java.util.zip.ZipFile
 
 import groovy.io.FileType
+import groovy.io.FileVisitResult
 
 import org.apache.commons.codec.digest.DigestUtils
 import org.apache.commons.lang3.StringUtils
@@ -48,6 +49,7 @@ task checkBndServiceInstructions
 task checkBrokenJarsKernel
 task checkCache
 task checkPortlets
+task consolidateLang
 task copyLibToCache
 task copyLibsToCache
 task checkMPBnd
@@ -264,6 +266,70 @@ checkPortlets << {
 		}
 
 		println "${dir.name} is okay"
+	}
+}
+
+consolidateLang << {
+	if (!project.hasProperty("langKeys")) {
+		throw new GradleException("Please pass -PlangKeys argument")
+	}
+
+	if (!project.hasProperty("langFrom")) {
+		throw new GradleException("Please pass -PlangFrom argument")
+	}
+
+	def langKeysList = langKeys.tokenize(",")
+
+	def moduleDir = _getModuleDir(langFrom)
+
+	if (moduleDir == null) {
+		throw new GradleException("Unable to find ${langFrom} in ${modulesDir}")
+	}
+
+	def contentDir = new File(moduleDir, "src/main/resources/content")
+
+	if (!contentDir.exists()) {
+		contentDir = new File(moduleDir, "docroot/WEB-INF/src/content")
+
+		if (!contentDir.exists()) {
+			throw new GradleException("Unable to find ${contentDir}")
+		}
+	}
+
+	def contentDestDir = new File(portalDir, "portal-impl/src/content")
+
+	def langFileTree = fileTree(dir: contentDir, include: "Language*.properties")
+
+	langFileTree.each {
+		langFile ->
+
+		def destLangFile = new File(contentDestDir, langFile.name)
+
+		if (!destLangFile.exists()) {
+			throw new GradleException("Unable to find " + destLangFile)
+		}
+
+		Properties langProperties = new Properties()
+
+		langFile.withInputStream {
+			langProperties.load it
+		}
+
+		langKeysList.each {
+			key ->
+
+			def value = langProperties[key]
+
+			if (!value) {
+				println "Unable to find ${key} in ${langFile}"
+
+				return
+			}
+
+			destLangFile << "\n${key}=${value}"
+
+			println "Copied ${key}=${value} from ${langFile} to ${destLangFile}"
+		}
 	}
 }
 
@@ -1009,6 +1075,23 @@ private void _copyLibToCache(Project project, File gradleCacheDir, String libGro
 			into new File(gradleLibDir, sha1)
 		}
 	}
+}
+
+private File _getModuleDir(String dirName) {
+	def moduleDir
+
+	modulesDir.traverse(
+		preDir: {
+			if (it.name == dirName) {
+				moduleDir = it
+
+				return FileVisitResult.TERMINATE
+			}
+		},
+		type: FileType.DIRECTORIES
+	)
+
+	return moduleDir
 }
 
 private String _getSHA1(File file) {
