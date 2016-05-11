@@ -46,6 +46,7 @@ repositories {
 	}
 }
 
+task addPortalBuild
 task checkBndInclude
 task checkBndInstructions
 task checkBndServiceInstructions
@@ -73,6 +74,23 @@ task replaceBuildXml
 task replaceProjectDeps
 task wrapper(type: Wrapper)
 task writeSettingsIncludes
+
+addPortalBuild << {
+	def buildXmlFiles = fileTree(dir: modulesDir, exclude: "*/**/samples/", include: "*/**/build.xml")
+
+	buildXmlFiles.each {
+		def portalBuildFile = new File(it.parentFile, "portal.build")
+
+		def created = portalBuildFile.createNewFile()
+
+		if (created) {
+			println "Created " + portalBuildFile
+		}
+		else {
+			throw new GradleException("Unable to create " + portalBuildFile)
+		}
+	}
+}
 
 checkBndInclude << {
 	def bndFiles = fileTree(dir: modulesDir, include: "**/bnd.bnd")
