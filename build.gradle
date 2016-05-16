@@ -81,6 +81,10 @@ addPortalBuild << {
 	buildXmlFiles.each {
 		def portalBuildFile = new File(it.parentFile, "portal.build")
 
+		if (portalBuildFile.exists()) {
+			return
+		}
+
 		def created = portalBuildFile.createNewFile()
 
 		if (created) {
