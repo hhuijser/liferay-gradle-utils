@@ -47,6 +47,7 @@ repositories {
 }
 
 task addPortalBuild
+task addStaticBuild
 task checkBndInclude
 task checkBndInstructions
 task checkBndServiceInstructions
@@ -93,6 +94,47 @@ addPortalBuild << {
 		else {
 			throw new GradleException("Unable to create " + portalBuildFile)
 		}
+	}
+}
+
+addStaticBuild << {
+	def bndFiles = fileTree(dir: modulesDir, include: "**/bnd.bnd")
+
+	def staticDeployDir = 'liferay {\n\tdeployDir = file("${liferayHome}/osgi/static")\n}'
+
+	bndFiles.each {
+		def dir = it.parentFile
+
+		def staticBuildFile = new File(dir, "static.build")
+
+		if (staticBuildFile.exists()) {
+			return
+		}
+
+		def buildGradleFile = new File(dir, "build.gradle")
+
+		if (!buildGradleFile.exists()) {
+			return
+		}
+
+		def buildGradle = buildGradleFile.text
+
+		buildGradle = buildGradle.replace('\r', '')
+
+		if (!buildGradle.contains(staticDeployDir)) {
+			return
+		}
+
+		def created = staticBuildFile.createNewFile()
+
+		if (created) {
+			println "Created " + staticBuildFile
+		}
+		else {
+			throw new GradleException("Unable to create " + staticBuildFile)
+		}
+
+		buildGradleFile.text = buildGradle.replace(staticDeployDir, '')
 	}
 }
 
