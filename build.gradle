@@ -71,6 +71,7 @@ task initSeparateRepos
 task moveLPS64532
 task moveModules
 task removeTouch
+task renameBuildFiles
 task replaceBuildXml
 task replaceProjectDeps
 task wrapper(type: Wrapper)
@@ -945,6 +946,25 @@ removeTouch << {
 
 		if (testDir.exists() || testIntegrationDir.exists()) {
 			delete touchFile
+		}
+	}
+}
+
+renameBuildFiles << {
+	def buildFiles = fileTree(dir: modulesDir, includes: ["**/portal.build", "**/static.build"])
+
+	buildFiles.each {
+		def suffix = it.name[0 .. - 7]
+
+		def newFile = new File(it.parentFile, ".lfrbuild-${suffix}")
+
+		def renamed = it.renameTo newFile
+
+		if (renamed) {
+			println "Renamed ${it} into ${newFile}"
+		}
+		else {
+			throw new GradleException("Unable to rename ${it} into ${newFile}")
 		}
 	}
 }
