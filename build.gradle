@@ -53,6 +53,7 @@ task checkBndInstructions
 task checkBndServiceInstructions
 task checkBrokenJarsKernel
 task checkCache
+task checkJenkins
 task checkPortlets
 task consolidateLang
 task copyLibToCache
@@ -309,6 +310,36 @@ checkMPBnd << {
 
 		if (packages.size() > 1) {
 			println "${app} is in ${packages}"
+		}
+	}
+}
+
+checkJenkins << {
+	println "Checking ${reportMatch} in ${reportUrl}..."
+
+	File reportFile = new File(temporaryDir, "report.html")
+
+	exec {
+		args = ["-O", reportFile.name, reportUrl]
+		executable = "wget"
+		workingDir = reportFile.parentFile
+	}
+
+	reportFile.text.eachMatch(/"(https:\/\/[^"]+\/\/console)"/) {
+		def consoleUrl = it[1] + "Text"
+
+		def consoleFile = new File(temporaryDir, "console.txt")
+
+		exec {
+			args = ["-O", consoleFile.name, consoleUrl]
+			executable = "wget"
+			workingDir = consoleFile.parentFile
+		}
+
+		if (consoleFile.text.contains(reportMatch)) {
+			println "\"${reportMatch}\" found in ${consoleUrl}"
+
+			throw new StopExecutionException()
 		}
 	}
 }
