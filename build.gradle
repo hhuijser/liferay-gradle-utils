@@ -71,6 +71,7 @@ task initPortalBuild
 task initSeparateRepos
 task moveLPS64532
 task moveModules
+task moveStatic
 task removeTouch
 task renameBuildFiles
 task replaceBuildXml
@@ -951,6 +952,16 @@ moveModules << {
 
 			return "modules/" + path.replace(File.separatorChar, '/' as char) + "/"
 		}
+	}
+}
+
+moveStatic << {
+	def staticFileTree = fileTree(dir: modulesDir, include: "**/.lfrbuild-static")
+
+	staticFileTree.each {
+		def dir = it.parentFile
+
+		println dir
 	}
 }
 
