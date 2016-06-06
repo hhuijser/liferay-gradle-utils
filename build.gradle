@@ -62,6 +62,7 @@ task checkMPBnd
 task copyRemoteLibToCache
 task deleteBuildXml(type: Delete)
 task deleteIvyXml(type: Delete)
+task deletePackageInfo(type: Delete)
 task deletePortalBuild(type: Delete)
 task fixBnd
 task fixCache
@@ -501,6 +502,10 @@ deleteBuildXml {
 
 deleteIvyXml {
 	delete fileTree(dir: modulesDir, include: "**/ivy.xml")
+}
+
+deletePackageInfo {
+	delete fileTree(dir: modulesDir, exclude: "**/src/*/resources/**/packageinfo")
 }
 
 deletePortalBuild {
