@@ -712,7 +712,7 @@ initSeparateRepos << {
 
 		def tmpBuildGradleTemplate = buildGradleTemplate
 
-		["cache", "lang.merger"].each {
+		["lang.merger"].each {
 			if (!buildGradles.contains("apply plugin: \"com.liferay.${it}\"")) {
 				tmpBuildGradleTemplate = tmpBuildGradleTemplate.replace("\t\tclasspath group: \"com.liferay\", name: \"com.liferay.gradle.plugins.${it}\", version: \"latest.release\"\n", "")
 			}
