@@ -50,6 +50,7 @@ task checkBndServiceInstructions
 task checkBrokenJarsKernel
 task checkCache
 task checkJenkins
+task checkKeywords
 task checkPortlets
 task consolidateLang
 task copyLibToCache
@@ -340,6 +341,32 @@ checkJenkins << {
 			throw new StopExecutionException()
 		}
 	}
+}
+
+checkKeywords << {
+	if (!project.hasProperty("dir")) {
+		throw new GradleException("Please pass -Pdir argument")
+	}
+
+	def keywordsFile = file("keywords.txt")
+
+	def keywords = keywordsFile.readLines()
+
+	def foundKeywords = new HashSet<String>()
+
+	def fileTree = fileTree(dir: new File(modulesDir, dir))
+
+	fileTree.each {
+		def content = it.text
+
+		keywords.each {
+			if (content.contains(it)) {
+				foundKeywords << it
+			}
+		}
+	}
+
+	println "Keywords not found: " + (keywords - foundKeywords)
 }
 
 checkPortlets << {

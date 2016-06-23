@@ -1,0 +1,17 @@
+_project_path_
+_name_
+_NAME_
+_package_path_
+_package_
+_SERVICE_FULL_
+_SERVICE_SHORT_
+_api_
+_service_
+_web_
+_api_path_
+_portlet_
+_portletpackage_
+_HOST_BUNDLE_BSN_
+_HOST_BUNDLE_VERSION_
+_CLASS_
+_portlet_fqn_
