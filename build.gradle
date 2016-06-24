@@ -51,6 +51,7 @@ task checkBrokenJarsKernel
 task checkCache
 task checkJenkins
 task checkKeywords
+task checkImplicitPortlets
 task checkPortlets
 task consolidateLang
 task copyLibToCache
@@ -367,6 +368,18 @@ checkKeywords << {
 	}
 
 	println "Keywords not found: " + (keywords - foundKeywords)
+}
+
+checkImplicitPortlets << {
+	def portletFileTree = fileTree(dir: modulesDir, exclude: "**/WEB-INF/", include: "apps/**/*Portlet.java")
+
+	portletFileTree.each {
+		if (it.text.contains("javax.portlet.name")) {
+			return
+		}
+
+		println it
+	}
 }
 
 checkPortlets << {
