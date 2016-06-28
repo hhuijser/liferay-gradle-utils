@@ -71,6 +71,7 @@ task initSeparateRepos
 task moveLPS64532
 task moveModules
 task moveStatic
+task printExtensions
 task removeTouch
 task renameBuildFiles
 task replaceBuildXml
@@ -1004,6 +1005,30 @@ moveStatic << {
 
 		println dir
 	}
+}
+
+printExtensions << {
+	if (!project.hasProperty("dir")) {
+		throw new GradleException("Please pass -Pdir argument")
+	}
+
+	Set<String> extensions = new TreeSet<String>()
+
+	def rootDir = new File(modulesDir, dir)
+
+	rootDir.eachFileRecurse {
+		def fileName = it.name
+
+		def pos = fileName.indexOf('.')
+
+		if (pos == -1) {
+			return
+		}
+
+		extensions << fileName.substring(pos + 1)
+	}
+
+	println extensions
 }
 
 removeTouch << {
