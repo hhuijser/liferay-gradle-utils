@@ -58,6 +58,7 @@ task copyLibToCache
 task copyLibsToCache
 task checkMPBnd
 task copyRemoteLibToCache
+task checkResources
 task deleteBuildXml(type: Delete)
 task deleteIvyXml(type: Delete)
 task deletePackageInfo(type: Delete)
@@ -66,6 +67,7 @@ task fixBnd
 task fixCache
 task fixPackageInfo
 task fixSeparateRepoDeps
+task fixShrinkwrap
 task initPortalBuild
 task initSeparateRepos
 task moveLPS64532
@@ -533,6 +535,15 @@ copyRemoteLibToCache << {
 	configuration.resolve()
 }
 
+checkResources << {
+	// def resourcesFileTree = fileTree(dir: modulesDir, excludes: ["**/packageinfo", "**/internal/"], include: "apps/web-experience/**/src/main/resources/com/")
+	def resourcesFileTree = fileTree(dir: modulesDir, excludes: ["sdk/gradle-templates/", "**/src/*/java/**/*.java", "**/source_formatter.ignore"], include: "**/src/*/java/")
+
+	resourcesFileTree.each {
+		println it
+	}
+}
+
 deleteBuildXml {
 	delete fileTree(dir: modulesDir, exclude: "**/samples/", include: "*/**/build.xml")
 }
@@ -685,6 +696,16 @@ fixSeparateRepoDeps << {
 		}
 
 		buildGradleFile.text = buildGradle
+	}
+}
+
+fixShrinkwrap << {
+	def shrinkwrapFileTree = fileTree(dir: modulesDir, include: "**/npm-shrinkwrap.json")
+
+	shrinkwrapFileTree.each {
+		shrinkwrapFile ->
+
+		shrinkwrapFile.text = shrinkwrapFile.text.replaceAll(/\t+"(?:from|resolved)": "http.+",*\r*\n/, "")
 	}
 }
 
