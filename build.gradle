@@ -61,7 +61,7 @@ task copyRemoteLibToCache
 task checkResources
 task deleteBuildXml(type: Delete)
 task deleteIvyXml(type: Delete)
-task deletePackageInfo(type: Delete)
+task deletePackageInfo
 task deletePortalBuild(type: Delete)
 task fixBnd
 task fixCache
@@ -552,8 +552,36 @@ deleteIvyXml {
 	delete fileTree(dir: modulesDir, include: "**/ivy.xml")
 }
 
-deletePackageInfo {
-	delete fileTree(dir: modulesDir, exclude: "**/src/*/resources/**/packageinfo")
+deletePackageInfo << {
+	def bndFiles = fileTree(dir: modulesDir, include: "**/bnd.bnd")
+
+	bndFiles.each {
+		bndFile ->
+
+		def moduleDir = bndFile.parentFile
+
+		Properties bndProperties = new Properties()
+
+		bndFile.withInputStream {
+			bndProperties.load it
+		}
+
+		def packageInfoExcludes = []
+
+		def exportPackage = bndProperties["Export-Package"]
+
+		if (exportPackage) {
+			def exportedPackages = exportPackage.split(",")
+
+			packageInfoExcludes = exportedPackages.collect {
+				"src/main/resources/" + it.replace('.' as char, '/' as char) + "/packageinfo"
+			}
+
+			println packageInfoExcludes
+		}
+
+		delete fileTree(dir: moduleDir, excludes: packageInfoExcludes, include: "**/packageinfo")
+	}
 }
 
 deletePortalBuild {
