@@ -49,6 +49,7 @@ task checkBndInstructions
 task checkBndServiceInstructions
 task checkBrokenJarsKernel
 task checkCache
+task checkEmptyPackages
 task checkJenkins
 task checkKeywords
 task checkImplicitPortlets
@@ -313,6 +314,42 @@ checkMPBnd << {
 
 		if (packages.size() > 1) {
 			println "${app} is in ${packages}"
+		}
+	}
+}
+
+checkEmptyPackages << {
+	def bndFiles = fileTree(dir: modulesDir, exclude: "third-party/", include: "**/bnd.bnd")
+
+	bndFiles.each {
+		bndFile ->
+
+		Properties bndProperties = new Properties()
+
+		bndFile.withInputStream {
+			bndProperties.load it
+		}
+
+		def exportPackage = bndProperties["Export-Package"]
+
+		if (!exportPackage) {
+			return
+		}
+
+		def moduleDir = bndFile.parentFile
+
+		def exportedPackages = exportPackage.split(",")
+
+		exportedPackages.each {
+			if ((it.indexOf('*') != -1) || (it.indexOf(';') != -1)) {
+				return
+			}
+
+			def packageFiles = fileTree(dir: moduleDir, exclude: "**/packageinfo", include: "src/main/*/" + it.replace('.' as char, '/' as char) + "/")
+
+			if (packageFiles.empty) {
+				println "Package ${it} in ${moduleDir} is both exported and empty"
+			}
 		}
 	}
 }
