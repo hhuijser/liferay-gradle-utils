@@ -69,6 +69,7 @@ task fixCache
 task fixPackageInfo
 task fixSeparateRepoDeps
 task fixShrinkwrap
+task initApps
 task initPortalBuild
 task initSeparateRepos
 task moveLPS64532
@@ -771,6 +772,25 @@ fixShrinkwrap << {
 		shrinkwrapFile ->
 
 		shrinkwrapFile.text = shrinkwrapFile.text.replaceAll(/\t+"(?:from|resolved)": "http.+",*\r*\n/, "")
+	}
+}
+
+initApps << {
+	def buildGradleTemplateFile = rootProject.file("app_build_gradle.tmpl")
+
+	def appFileTree = fileTree(dir: modulesDir, include: "**/app.bnd")
+
+	appFileTree.each {
+		def dir = it.parentFile
+
+		copy {
+			from buildGradleTemplateFile
+			into dir
+
+			rename {
+				"build.gradle"
+			}
+		}
 	}
 }
 
