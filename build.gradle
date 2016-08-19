@@ -834,11 +834,14 @@ initPortalBuild {
 
 initSeparateRepos << {
 	def gitRepoFileTree = fileTree(dir: modulesDir, include: "**/.gitrepo")
+	def modulesDirPath = modulesDir.toPath()
 
 	def buildGradleTemplateFile = rootProject.file("separate_repos_build_gradle.tmpl")
+	def gradlePropertiesTemplateFile = rootProject.file("separate_repos_gradle_properties.tmpl")
 	def settingsGradleTemplateFile = rootProject.file("separate_repos_settings_gradle.tmpl")
 
 	def buildGradleTemplate = buildGradleTemplateFile.text.normalize()
+	def gradlePropertiesTemplate = gradlePropertiesTemplateFile.text.normalize()
 	def settingsGradleTemplate = settingsGradleTemplateFile.text.normalize()
 
 	gitRepoFileTree.each {
@@ -847,6 +850,7 @@ initSeparateRepos << {
 		def gitRepoDir = gitRepoFile.parentFile
 
 		def buildGradleFile = new File(gitRepoDir, "build.gradle")
+		def gradlePropertiesFile = new File(gitRepoDir, "gradle.properties")
 		def settingsGradleFile = new File(gitRepoDir, "settings.gradle")
 
 		def buildGradleFileTree = fileTree(dir: gitRepoDir, include: "**/build.gradle")
@@ -865,8 +869,13 @@ initSeparateRepos << {
 			}
 		}
 
-		buildGradleFile.text = tmpBuildGradleTemplate
-		settingsGradleFile.text = settingsGradleTemplate
+		def projectPathPrefix = modulesDirPath.relativize(gitRepoDir.toPath()).toString()
+
+		projectPathPrefix = projectPathPrefix.replace(File.separatorChar, ':' as char)
+
+		buildGradleFile.setText(tmpBuildGradleTemplate, "UTF-8")
+		gradlePropertiesFile.setText(gradlePropertiesTemplate.replace('[$PROJECT_PATH_PREFIX$]', projectPathPrefix), "ISO-8859-1")
+		settingsGradleFile.setText(settingsGradleTemplate, "UTF-8")
 
 		println "Initialized " + gitRepoDir
 	}
