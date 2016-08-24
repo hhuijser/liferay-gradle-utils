@@ -72,6 +72,7 @@ task fixShrinkwrap
 task initApps
 task initPortalBuild
 task initSeparateRepos
+task initSeparateReposGit
 task moveLPS64532
 task moveModules
 task moveStatic
@@ -878,6 +879,27 @@ initSeparateRepos << {
 		settingsGradleFile.setText(settingsGradleTemplate, "UTF-8")
 
 		println "Initialized " + gitRepoDir
+	}
+}
+
+initSeparateReposGit << {
+	def gitRepoFileTree = fileTree(dir: modulesDir, include: "**/.gitrepo")
+
+	gitRepoFileTree.each {
+		gitRepoFile ->
+
+		def gitRepoDir = gitRepoFile.parentFile
+
+		def gitAttributesFile = new File(gitRepoDir, ".gitattributes")
+
+		def soyFileTree = fileTree(dir: gitRepoDir, include: "**/src/main/resources/**/*.soy")
+
+		if (soyFileTree.empty) {
+			delete gitAttributesFile
+		}
+		else {
+			gitAttributesFile.text = '*.soy	text eol=lf'
+		}
 	}
 }
 
