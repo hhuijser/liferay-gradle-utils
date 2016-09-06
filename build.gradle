@@ -64,6 +64,7 @@ task deleteBuildXml(type: Delete)
 task deleteIvyXml(type: Delete)
 task deletePackageInfo
 task deletePortalBuild(type: Delete)
+task diffArtifact
 task fixBnd
 task fixCache
 task fixPackageInfo
@@ -625,6 +626,41 @@ deletePackageInfo << {
 
 deletePortalBuild {
 	delete fileTree(dir: modulesDir, include: "**/portal.build")
+}
+
+diffArtifact << {
+	String artifactName = project.properties["artifactName"]
+	String artifactVerStart = project.properties["artifactVerStart"]
+	String artifactVerEnd = project.properties["artifactVerEnd"]
+
+	if (!artifactName || !artifactVerEnd || !artifactVerStart) {
+		throw new GradleException('Please set "-PartifactName=gradle.plugins -PartifactVerStart=2.0.1 -PartifactVerEnd=2.0.2')
+	}
+
+	artifactName = "com.liferay." + artifactName
+
+	def combinations = [[artifactVerStart, artifactVerEnd], ["-sources.jar", ".pom"]].combinations()
+
+	combinations.each {
+		def artifactVersion = it[0]
+		def artifactSuffix = it[1]
+
+		project.download {
+			src "https://repository.liferay.com/nexus/content/groups/public/com/liferay/${artifactName}/${artifactVersion}/${artifactName}-${artifactVersion}${artifactSuffix}"
+			dest temporaryDir
+		}
+	}
+
+	FileTree jarFileTree = fileTree(dir: temporaryDir, include: "*.jar")
+
+	jarFileTree.each {
+		jarFile ->
+
+		copy {
+			from zipTree(jarFile)
+			into new File(temporaryDir, jarFile.name[0 .. -5])
+		}
+	}
 }
 
 fixBnd << {
