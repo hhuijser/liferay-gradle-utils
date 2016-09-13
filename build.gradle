@@ -68,6 +68,7 @@ task diffArtifact
 task fixBnd
 task fixCache
 task fixPackageInfo
+task fixProjectTemplatesVelocity
 task fixSeparateRepoDeps
 task fixShrinkwrap
 task initApps
@@ -740,6 +741,22 @@ fixPackageInfo << {
 				packageInfoFile.text = "version 1.0.0"
 			}
 		}
+	}
+}
+
+fixProjectTemplatesVelocity << {
+	def velocityFiles = fileTree(dir: modulesDir, include: "sdk/project-templates-*/")
+
+	velocityFiles.each {
+		def content = it.text
+
+		content = content.replaceAll(/#if\s*\(\s*(.+)\s*\)/) {
+			all, group ->
+
+			"#if (${group.trim()})"
+		}
+
+		it.setText content, "UTF-8"
 	}
 }
 
