@@ -921,10 +921,18 @@ initSeparateRepos << {
 initSeparateReposGit << {
 	def gitRepoFileTree = fileTree(dir: modulesDir, include: "**/.gitrepo")
 
+	def gitIgnoreTemplateFile = rootProject.file("separate_repos_gitignore.tmpl")
+
+	def gitIgnoreTemplate = gitIgnoreTemplateFile.text.normalize()
+
 	gitRepoFileTree.each {
 		gitRepoFile ->
 
 		def gitRepoDir = gitRepoFile.parentFile
+
+		def gitIgnoreFile = new File(gitRepoDir, ".gitignore")
+
+		gitIgnoreFile.setText gitIgnoreTemplate, "UTF-8"
 
 		def gitAttributesFile = new File(gitRepoDir, ".gitattributes")
 
