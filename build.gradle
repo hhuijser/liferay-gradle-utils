@@ -944,8 +944,10 @@ initSeparateRepos << {
 initSeparateReposGit << {
 	def gitRepoFileTree = fileTree(dir: modulesDir, include: "**/.gitrepo")
 
+	def gitAttributesTemplateFile = rootProject.file("separate_repos_gitattributes.tmpl")
 	def gitIgnoreTemplateFile = rootProject.file("separate_repos_gitignore.tmpl")
 
+	def gitAttributesTemplate = gitAttributesTemplateFile.text.normalize()
 	def gitIgnoreTemplate = gitIgnoreTemplateFile.text.normalize()
 
 	gitRepoFileTree.each {
@@ -959,14 +961,7 @@ initSeparateReposGit << {
 
 		def gitAttributesFile = new File(gitRepoDir, ".gitattributes")
 
-		def soyFileTree = fileTree(dir: gitRepoDir, include: "**/src/main/resources/**/*.soy")
-
-		if (soyFileTree.empty) {
-			delete gitAttributesFile
-		}
-		else {
-			gitAttributesFile.text = '*.soy	text eol=lf'
-		}
+		gitAttributesFile.setText gitAttributesTemplate, "UTF-8"
 	}
 }
 
