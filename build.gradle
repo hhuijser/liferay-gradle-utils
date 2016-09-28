@@ -630,15 +630,11 @@ deletePortalBuild {
 }
 
 diffArtifact << {
-	String artifactName = project.properties["artifactName"]
-	String artifactVerStart = project.properties["artifactVerStart"]
-	String artifactVerEnd = project.properties["artifactVerEnd"]
+	def artifact = project.properties["art"].split(":")
 
-	if (!artifactName || !artifactVerEnd || !artifactVerStart) {
-		throw new GradleException('Please set "-PartifactName=gradle.plugins -PartifactVerStart=2.0.1 -PartifactVerEnd=2.0.2')
-	}
-
-	artifactName = "com.liferay." + artifactName
+	String artifactName = "com.liferay." + artifact[0]
+	String artifactVerStart = artifact[1]
+	String artifactVerEnd = artifact[2]
 
 	def combinations = [[artifactVerStart, artifactVerEnd], ["-sources.jar", ".pom"]].combinations()
 
