@@ -67,6 +67,7 @@ task deletePortalBuild(type: Delete)
 task diffArtifact
 task fixBnd
 task fixCache
+task fixChangelogs
 task fixPackageInfo
 task fixProjectTemplatesVelocity
 task fixSeparateRepoDeps
@@ -697,6 +698,58 @@ fixCache << {
 				println "Deleted " + dir
 			}
 		}
+	}
+}
+
+fixChangelogs << {
+	def changelogFileTree = fileTree(dir: modulesDir, exclude: "**/node_modules/", include: "**/CHANGELOG.markdown")
+
+	changelogFileTree.each {
+		changelogFile ->
+
+		def moduleDir = changelogFile.parentFile
+
+		def bndFile = new File(moduleDir, "bnd.bnd")
+
+		if (!bndFile.exists()) {
+			return
+		}
+
+		Properties bndProperties = new Properties()
+
+		bndFile.withInputStream {
+			bndProperties.load it
+		}
+
+		def bundleSymbolicName = bndProperties.getProperty("Bundle-SymbolicName")
+
+		changelogFile.text = changelogFile.text.replaceAll(/## (\d+\.\d+\.\d+) - \d\d\d\d-\d\d-\d\d/) {
+			all, ver ->
+
+			def xmlSlurper = new XmlSlurper()
+
+			def rootNode
+
+			try {
+				rootNode = xmlSlurper.parse("https://repository.liferay.com/nexus/service/local/repositories/liferay-public-releases/content/com/liferay/${bundleSymbolicName}/${ver}/${bundleSymbolicName}-${ver}.jar?describe=info")
+			}
+			catch (Exception e) {
+				println e.message
+
+				return all
+			}
+
+			def calendar = Calendar.getInstance()
+
+			calendar.timeInMillis = rootNode.data.uploaded.text().toLong()
+
+			def date = calendar.format("yyyy-MM-dd")
+
+			println "${bundleSymbolicName}: ${ver} - ${date}"
+
+			"## ${ver} - ${date}"
+		}
+
 	}
 }
 
