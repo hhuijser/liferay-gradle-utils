@@ -723,7 +723,21 @@ fixChangelogs << {
 
 		def bundleSymbolicName = bndProperties.getProperty("Bundle-SymbolicName")
 
-		changelogFile.text = changelogFile.text.replaceAll(/## (\d+\.\d+\.\d+) - \d\d\d\d-\d\d-\d\d/) {
+		def changelog = changelogFile.getText("UTF-8")
+
+		changelog = changelog.replaceAll(/#([\d|A-Z])/) {
+			all, c ->
+
+			"# ${c}"
+		}
+
+		changelog = changelog.replaceAll(/(?m)^## ([A-Z])/) {
+			all, c ->
+
+			"### ${c}"
+		}
+
+		changelog = changelog.replaceAll(/## (\d+\.\d+\.\d+) - \d\d\d\d-\d\d-\d\d/) {
 			all, ver ->
 
 			def xmlSlurper = new XmlSlurper()
@@ -750,6 +764,7 @@ fixChangelogs << {
 			"## ${ver} - ${date}"
 		}
 
+		changelogFile.setText changelog, "UTF-8"
 	}
 }
 
