@@ -737,6 +737,12 @@ fixChangelogs << {
 			"### ${c}"
 		}
 
+		changelog = changelog.replaceAll(/\[([A-Z]+)-(\d+)\]: https:\/\/issues\.liferay\.com\/browse\/.+/) {
+			all, prefix, number ->
+
+			"[${prefix}-${number}]: https://issues.liferay.com/browse/${prefix}-${number}"
+		}
+
 		changelog = changelog.replaceAll(/## (\d+\.\d+\.\d+) - \d\d\d\d-\d\d-\d\d/) {
 			all, ver ->
 
