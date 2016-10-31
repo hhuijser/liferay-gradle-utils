@@ -631,34 +631,41 @@ deletePortalBuild {
 }
 
 diffArtifact << {
-	def artifact = project.properties["art"].split(":")
+	def artifact = project.properties["art"].tokenize(":")
 
-	String artifactName = "com.liferay." + artifact[0]
-	String artifactVerStart = artifact[1]
-	String artifactVerEnd = artifact[2]
+	def artifactName = "com.liferay." + artifact[0]
+	def artifactVersions = artifact[1 .. -1]
 
-	def combinations = [[artifactVerStart, artifactVerEnd], ["-sources.jar", ".pom"]].combinations()
+	def combinations = [artifactVersions, ["-sources.jar", ".pom"]].combinations()
+
+	def artifactDir = new File(temporaryDir, artifactName)
+
+	artifactDir.mkdirs()
 
 	combinations.each {
 		def artifactVersion = it[0]
 		def artifactSuffix = it[1]
 
+		def url = "https://repository.liferay.com/nexus/content/groups/public/com/liferay/${artifactName}/${artifactVersion}/${artifactName}-${artifactVersion}${artifactSuffix}"
+
 		project.download {
-			src "https://repository.liferay.com/nexus/content/groups/public/com/liferay/${artifactName}/${artifactVersion}/${artifactName}-${artifactVersion}${artifactSuffix}"
-			dest temporaryDir
+			src url
+			dest artifactDir
 		}
 	}
 
-	FileTree jarFileTree = fileTree(dir: temporaryDir, include: "*.jar")
+	def jarFileTree = fileTree(dir: artifactDir, include: "*.jar")
 
 	jarFileTree.each {
 		jarFile ->
 
 		copy {
 			from zipTree(jarFile)
-			into new File(temporaryDir, jarFile.name[0 .. -5])
+			into new File(artifactDir, jarFile.name[0 .. -5])
 		}
 	}
+
+	delete jarFileTree
 }
 
 fixBnd << {
