@@ -750,7 +750,7 @@ fixChangelogs << {
 			"[${prefix}-${number}]: https://issues.liferay.com/browse/${prefix}-${number}"
 		}
 
-		changelog = changelog.replaceAll(/## (\d+\.\d+\.\d+) - \d\d\d\d-\d\d-\d\d/) {
+		changelog = changelog.replaceAll(/## (\d+\.\d+\.\d+) - .+/) {
 			all, ver ->
 
 			def xmlSlurper = new XmlSlurper()
@@ -763,7 +763,7 @@ fixChangelogs << {
 			catch (Exception e) {
 				println e.message
 
-				return all
+				return "## ${ver} - *(Unreleased)*"
 			}
 
 			def calendar = Calendar.getInstance()
