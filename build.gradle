@@ -750,6 +750,15 @@ fixChangelogs << {
 			"[${prefix}-${number}]: https://issues.liferay.com/browse/${prefix}-${number}"
 		}
 
+		changelog = changelog.replaceAll(/\[Liferay ([\w\s]+)\]: https:\/\/github\.com\/liferay\/liferay-portal\/tree\/master\/modules\/([a-z]+)\/(.+)/) {
+			all, name, groupName, dirName ->
+
+			dirName = name.toLowerCase()
+			dirName = dirName.replace(' ' as char, '-' as char)
+
+			"[Liferay ${name}]: https://github.com/liferay/liferay-portal/tree/master/modules/${groupName}/${dirName}"
+		}
+
 		changelog = changelog.replaceAll(/## (\d+\.\d+\.\d+) - .+/) {
 			all, ver ->
 
