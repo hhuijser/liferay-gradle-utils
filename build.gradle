@@ -1,5 +1,6 @@
 import com.liferay.portal.kernel.util.UnicodeProperties
 
+import java.util.regex.Pattern
 import java.util.zip.ZipFile
 
 import groovy.io.FileType
@@ -757,6 +758,19 @@ fixChangelogs << {
 			dirName = dirName.replace(' ' as char, '-' as char)
 
 			"[Liferay ${name}]: https://github.com/liferay/liferay-portal/tree/master/modules/${groupName}/${dirName}"
+		}
+
+		changelog = changelog.replaceAll(/\[(.+)\]: http.+\n*\r*/) {
+			all, label ->
+
+			def matcher = changelog =~ Pattern.compile(Pattern.quote("[${label}]"))
+
+			if (matcher.count > 1) {
+				return all
+			}
+			else {
+				return ""
+			}
 		}
 
 		changelog = changelog.replaceAll(/## (\d+\.\d+\.\d+) - .+/) {
