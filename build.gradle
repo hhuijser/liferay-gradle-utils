@@ -733,6 +733,14 @@ fixChangelogs << {
 
 		def changelog = changelogFile.getText("UTF-8")
 
+		changelog = changelog.normalize()
+
+		changelog = changelog.replaceAll(/### (\w+)\n\n/) {
+			all, c ->
+
+			"### ${c}\n"
+		}
+
 		changelog = changelog.replaceAll(/#([\d|A-Z])/) {
 			all, c ->
 
