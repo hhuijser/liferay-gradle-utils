@@ -710,7 +710,14 @@ fixCache << {
 }
 
 fixChangelogs << {
-	def changelogFileTree = fileTree(dir: modulesDir, exclude: "**/node_modules/", include: "**/CHANGELOG.markdown")
+	def includePattern = project.properties["include"] ?: ""
+	def limitVersion = project.properties["limitVersion"]
+
+	if (includePattern) {
+		includePattern = "**/${includePattern}/"
+	}
+
+	def changelogFileTree = fileTree(dir: modulesDir, exclude: "**/node_modules/", include: includePattern + "**/CHANGELOG.markdown")
 
 	changelogFileTree.each {
 		changelogFile ->
@@ -783,6 +790,10 @@ fixChangelogs << {
 
 		changelog = changelog.replaceAll(/## (\d+\.\d+\.\d+) - .+/) {
 			all, ver ->
+
+			if (limitVersion && (limitVersion != ver)) {
+				return all
+			}
 
 			def xmlSlurper = new XmlSlurper()
 
