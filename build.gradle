@@ -86,6 +86,7 @@ task renameBuildFiles
 task replaceBuildXml
 task replaceProjectDeps
 task wrapper(type: Wrapper)
+task writeGradleTestsScript
 task writeSettingsIncludes
 
 addPortalBuild << {
@@ -1479,6 +1480,38 @@ replaceProjectDeps << {
 
 wrapper {
 	gradleVersion = "2.11"
+}
+
+writeGradleTestsScript << {
+	def buildGradleFiles = fileTree(dir: new File(modulesDir, "sdk"), exclude: ["gradle-plugins-gulp/", "gradle-plugins-js-module-config-generator/", "gradle-plugins-js-transpiler/", "gradle-plugins-node/"], include: "**/build.gradle")
+
+	def dirPath = portalDir.toPath()
+
+	def gradlewPath = dirPath.resolve("gradlew")
+
+	buildGradleFiles.each {
+		buildGradleFile ->
+
+		if (!buildGradleFile.text.contains("org.ysb33r.gradletest")) {
+			return
+		}
+
+		def moduleDirPath = buildGradleFile.parentFile.toPath()
+
+		def relativePath = dirPath.relativize(moduleDirPath).toString()
+
+		dirPath = moduleDirPath
+
+		relativePath = relativePath.replace(File.separatorChar, '/' as char)
+
+		println "cd ${relativePath}"
+
+		relativePath = dirPath.relativize(gradlewPath).toString()
+
+		relativePath = relativePath.replace(File.separatorChar, '/' as char)
+
+		println "${relativePath} gradleTest"
+	}
 }
 
 writeSettingsIncludes << {
