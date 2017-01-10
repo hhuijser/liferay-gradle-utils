@@ -86,6 +86,7 @@ task renameBuildFiles
 task replaceBuildXml
 task replaceProjectDeps
 task wrapper(type: Wrapper)
+task writeDependencyVersions
 task writeGradleTestsScript
 task writeSettingsIncludes
 
@@ -1480,6 +1481,40 @@ replaceProjectDeps << {
 
 wrapper {
 	gradleVersion = "2.11"
+}
+
+writeDependencyVersions << {
+	assert project.properties["depName"] : "Please provide -PdepName"
+
+	Map dependenciesMap = [:]
+
+	def buildGradleFiles = fileTree(dir: modulesDir, include: "**/build.gradle")
+
+	def pattern = ~(', name: "' + Pattern.quote(depName) + '", version: "(.+)"')
+
+	buildGradleFiles.each {
+		def matcher = it.text =~ pattern
+
+		if (matcher.find()) {
+			def depVersion = matcher.group(1)
+
+			def fileNames = dependenciesMap[depVersion]
+
+			if (!fileNames) {
+				fileNames = new TreeSet<String>()
+
+				dependenciesMap[depVersion] = fileNames
+			}
+
+			fileNames << it
+		}
+	}
+
+	dependenciesMap.each {
+		k, v ->
+
+		println "${k} = ${v}"
+	}
 }
 
 writeGradleTestsScript << {
