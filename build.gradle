@@ -1,10 +1,13 @@
 import com.liferay.portal.kernel.util.UnicodeProperties
 
+import java.util.concurrent.ConcurrentMap
 import java.util.regex.Pattern
 import java.util.zip.ZipFile
 
 import groovy.io.FileType
 import groovy.io.FileVisitResult
+
+import groovyx.gpars.GParsPool
 
 import org.apache.commons.codec.digest.DigestUtils
 import org.apache.commons.lang3.StringUtils
@@ -14,6 +17,7 @@ buildscript {
 		classpath "com.liferay.portal:com.liferay.portal.kernel:latest.release"
 		classpath "commons-codec:commons-codec:1.10"
 		classpath "org.apache.commons:commons-lang3:3.4"
+		classpath "org.codehaus.gpars:gpars:1.2.1"
 	}
 
 	repositories {
@@ -790,35 +794,67 @@ fixChangelogs << {
 			}
 		}
 
-		changelog = changelog.replaceAll(/## (\d+\.\d+\.\d+) - .+/) {
+		def versions = []
+
+		def pattern = ~/## (\d+\.\d+\.\d+) - .+/
+
+		changelog.eachMatch(pattern) {
+			all, ver ->
+
+			if (limitVersion && (limitVersion != ver)) {
+				return
+			}
+
+			versions << ver
+		}
+
+		def versionDateMap = [:] as ConcurrentMap
+
+		GParsPool.withPool {
+			versions.eachParallel {
+				ver ->
+
+				def xmlSlurper = new XmlSlurper()
+
+				def rootNode
+
+				try {
+					rootNode = xmlSlurper.parse("https://repository.liferay.com/nexus/service/local/repositories/liferay-public-releases/content/com/liferay/${bundleSymbolicName}/${ver}/${bundleSymbolicName}-${ver}.jar?describe=info")
+				}
+				catch (Exception e) {
+					println e.message
+
+					versionDateMap[ver] = null
+
+					return
+				}
+
+				def calendar = Calendar.getInstance()
+
+				calendar.timeInMillis = rootNode.data.uploaded.text().toLong()
+
+				def date = calendar.format("yyyy-MM-dd")
+
+				println "${bundleSymbolicName}: ${ver} - ${date}"
+
+				versionDateMap[ver] = date
+			}
+		}
+
+		changelog = changelog.replaceAll(pattern) {
 			all, ver ->
 
 			if (limitVersion && (limitVersion != ver)) {
 				return all
 			}
 
-			def xmlSlurper = new XmlSlurper()
+			def date = versionDateMap[ver]
 
-			def rootNode
-
-			try {
-				rootNode = xmlSlurper.parse("https://repository.liferay.com/nexus/service/local/repositories/liferay-public-releases/content/com/liferay/${bundleSymbolicName}/${ver}/${bundleSymbolicName}-${ver}.jar?describe=info")
-			}
-			catch (Exception e) {
-				println e.message
-
-				return "## ${ver} - *(Unreleased)*"
+			if (date) {
+				return "## ${ver} - ${date}"
 			}
 
-			def calendar = Calendar.getInstance()
-
-			calendar.timeInMillis = rootNode.data.uploaded.text().toLong()
-
-			def date = calendar.format("yyyy-MM-dd")
-
-			println "${bundleSymbolicName}: ${ver} - ${date}"
-
-			"## ${ver} - ${date}"
+			return "## ${ver} - *(Unreleased)*"
 		}
 
 		changelogFile.setText changelog, "UTF-8"
