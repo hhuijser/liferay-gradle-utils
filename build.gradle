@@ -1,6 +1,6 @@
 import com.liferay.portal.kernel.util.UnicodeProperties
 
-import java.util.concurrent.ConcurrentMap
+import java.util.concurrent.ConcurrentHashMap
 import java.util.regex.Pattern
 import java.util.zip.ZipFile
 
@@ -808,7 +808,7 @@ fixChangelogs << {
 			versions << ver
 		}
 
-		def versionDateMap = [:] as ConcurrentMap
+		def versionDateMap = new ConcurrentHashMap<String, Date>()
 
 		GParsPool.withPool {
 			versions.eachParallel {
@@ -835,9 +835,9 @@ fixChangelogs << {
 
 				def date = calendar.format("yyyy-MM-dd")
 
-				println "${bundleSymbolicName}: ${ver} - ${date}"
-
 				versionDateMap[ver] = date
+
+				println "${bundleSymbolicName}: ${ver} - ${date}"
 			}
 		}
 
