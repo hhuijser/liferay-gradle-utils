@@ -824,7 +824,7 @@ fixChangelogs << {
 				catch (Exception e) {
 					println e.message
 
-					versionDateMap[ver] = null
+					versionDateMap[ver] = ""
 
 					return
 				}
