@@ -1522,7 +1522,7 @@ wrapper {
 writeDependencyVersions << {
 	assert project.properties["depName"] : "Please provide -PdepName"
 
-	Map dependenciesMap = [:]
+	Map dependenciesMap = [:] as TreeMap
 
 	def buildGradleFiles = fileTree(dir: modulesDir, include: "**/build.gradle")
 
