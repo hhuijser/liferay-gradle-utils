@@ -367,31 +367,15 @@ checkEmptyPackages << {
 }
 
 checkJenkins << {
-	println "Checking ${reportMatch} in ${reportUrl}..."
+	println "Checking \"${reportMatch}\" in ${reportUrl}..."
 
-	File reportFile = new File(temporaryDir, "report.html")
+	def url = new URL(reportUrl)
 
-	exec {
-		args = ["-O", reportFile.name, reportUrl]
-		executable = "wget"
-		workingDir = reportFile.parentFile
-	}
+	url.text.eachMatch(/"(https:\/\/[^"]+\/\/console)"/) {
+		def consoleUrl = new URL(it[1] + "Text")
 
-	reportFile.text.eachMatch(/"(https:\/\/[^"]+\/\/console)"/) {
-		def consoleUrl = it[1] + "Text"
-
-		def consoleFile = new File(temporaryDir, "console.txt")
-
-		exec {
-			args = ["-O", consoleFile.name, consoleUrl]
-			executable = "wget"
-			workingDir = consoleFile.parentFile
-		}
-
-		if (consoleFile.text.contains(reportMatch)) {
+		if (consoleUrl.text.contains(reportMatch)) {
 			println "\"${reportMatch}\" found in ${consoleUrl}"
-
-			throw new StopExecutionException()
 		}
 	}
 }
