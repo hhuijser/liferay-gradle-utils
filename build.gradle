@@ -81,6 +81,7 @@ task initApps
 task initPortalBuild
 task initSeparateRepos
 task initSeparateReposGit
+task initTestIntegration
 task moveLPS64532
 task moveModules
 task moveStatic
@@ -1103,6 +1104,49 @@ initSeparateReposGit << {
 		def gitAttributesFile = new File(gitRepoDir, ".gitattributes")
 
 		gitAttributesFile.setText gitAttributesTemplate, "UTF-8"
+	}
+}
+
+initTestIntegration << {
+	def bndBndFileTree = fileTree(dir: modulesDir, include: "**/bnd.bnd")
+
+	bndBndFileTree.each {
+		bndBndFile ->
+
+		def moduleDir = bndBndFile.parentFile
+
+		def buildGradleFile = new File(moduleDir, "build.gradle")
+
+		if (!buildGradleFile.exists()) {
+			return
+		}
+
+		def buildGradle = buildGradleFile.text
+
+		if (buildGradle.contains('apply plugin: "com.liferay.test.integration')) {
+			return
+		}
+
+		def srcTestIntegrationDir = new File(moduleDir, "src/testIntegration")
+
+		if (!srcTestIntegrationDir.exists()) {
+			return
+		}
+
+		def testIntegrationPluginId = "com.liferay.test.integration"
+
+		def skipManagedAppServerFile = new File(srcTestIntegrationDir, "resources/skip.managed.app.server")
+
+		if (skipManagedAppServerFile.exists()) {
+			testIntegrationPluginId = "com.liferay.test.integration.base"
+
+			delete skipManagedAppServerFile
+		}
+
+		buildGradleFile.text = """\
+apply plugin: \"${testIntegrationPluginId}\"
+
+${buildGradle}"""
 	}
 }
 
