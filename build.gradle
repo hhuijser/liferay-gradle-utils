@@ -88,6 +88,7 @@ task moveStatic
 task printExtensions
 task removeTouch
 task renameBuildFiles
+task replaceBuildCIPortalFiles
 task replaceBuildXml
 task replaceProjectDeps
 task wrapper(type: Wrapper)
@@ -1459,6 +1460,31 @@ renameBuildFiles << {
 			throw new GradleException("Unable to rename ${it} into ${newFile}")
 		}
 	}
+}
+
+replaceBuildCIPortalFiles << {
+	def dirExcludes = [
+		"apps/collaboration/",
+		"apps/forms-and-workflow/",
+		"apps/foundation/",
+		"apps/ip-geocoder/",
+		"apps/marketplace/",
+		"apps/static/",
+		"apps/sync/",
+		"apps/web-experience/",
+		"core/",
+		"util/"
+	]
+
+	def buildPortalFileTree = fileTree(dir: modulesDir, excludes: dirExcludes, include: "**/.lfrbuild-portal")
+
+	buildPortalFileTree.each {
+		File buildCIFile = new File(it.parentFile, ".lfrbuild-ci")
+
+		buildCIFile.createNewFile()
+	}
+
+	delete buildPortalFileTree
 }
 
 replaceBuildXml << {
