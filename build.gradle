@@ -1093,8 +1093,14 @@ initSeparateReposGit << {
 	def gitAttributesTemplate = gitAttributesTemplateFile.text.normalize()
 	def gitIgnoreTemplate = gitIgnoreTemplateFile.text.normalize()
 
+	def excludeReadOnly = Boolean.getBoolean("exclude.read.only")
+
 	gitRepoFileTree.each {
 		gitRepoFile ->
+
+		if (excludeReadOnly && gitRepoFile.text.contains("mode = pull")) {
+			return
+		}
 
 		def gitRepoDir = gitRepoFile.parentFile
 
