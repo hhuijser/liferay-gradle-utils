@@ -48,6 +48,7 @@ repositories {
 }
 
 task addPortalBuild
+task addSeparateReposGradleProperties
 task addStaticBuild
 task checkBndInclude
 task checkBndInstructions
@@ -114,6 +115,28 @@ addPortalBuild << {
 		else {
 			throw new GradleException("Unable to create " + portalBuildFile)
 		}
+	}
+}
+
+addSeparateReposGradleProperties << {
+	def lines = project.properties["lines"].tokenize(",")
+
+	def gitRepoFileTree = fileTree(dir: modulesDir, include: "**/.gitrepo")
+
+	def excludeReadOnly = Boolean.getBoolean("exclude.read.only")
+
+	gitRepoFileTree.each {
+		gitRepoFile ->
+
+		if (excludeReadOnly && gitRepoFile.text.contains("mode = pull")) {
+			return
+		}
+
+		def gradlePropertiesFile = new File(gitRepoFile.parentFile, "gradle.properties")
+
+		def gradleProperties = gradlePropertiesFile.readLines()
+
+		gradlePropertiesFile.text = (gradleProperties + lines).toSorted().join(System.lineSeparator())
 	}
 }
 
