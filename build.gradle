@@ -78,6 +78,7 @@ task fixPackageInfo
 task fixProjectTemplatesVelocity
 task fixSeparateRepoDeps
 task fixShrinkwrap
+task fixWrongPrepNext
 task initApps
 task initPortalBuild
 task initSeparateRepos
@@ -992,6 +993,36 @@ fixShrinkwrap << {
 		shrinkwrapFile ->
 
 		shrinkwrapFile.text = shrinkwrapFile.text.replaceAll(/\t+"(?:from|resolved)": "http.+",*\r*\n/, "")
+	}
+}
+
+fixWrongPrepNext << {
+	def bndBndFileTree = fileTree(dir: modulesDir, include: "**/bnd.bnd")
+
+	def xmlSlurper = new XmlSlurper()
+
+	bndBndFileTree.each {
+		bndBndFile ->
+
+		def bndBndProperties = GUtil.loadProperties(bndBndFile)
+
+		def bundleVersion = bndBndProperties["Bundle-Version"]
+
+		if (!bundleVersion.startsWith("0.0.")) {
+			return
+		}
+
+		def bundleSymbolicName = bndBndProperties["Bundle-SymbolicName"]
+
+		def artifactResolutionNode = xmlSlurper.parse("https://repository.liferay.com/nexus/service/local/artifact/maven/resolve?g=com.liferay&a=${bundleSymbolicName}&v=RELEASE&r=liferay-public-releases")
+
+		def latestVersion = artifactResolutionNode.data.version.text()
+
+		VersionNumber latestVersionNumber = VersionNumber.parse(latestVersion)
+
+		VersionNumber nextVersionNumber = new VersionNumber(latestVersionNumber.major, latestVersionNumber.minor, latestVersionNumber.micro + 1, null)
+
+		bndBndFile.text = bndBndFile.text.replace("Bundle-Version: ${bundleVersion}", "Bundle-Version: ${nextVersionNumber}")
 	}
 }
 
