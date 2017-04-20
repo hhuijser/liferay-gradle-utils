@@ -74,6 +74,7 @@ task diffArtifact
 task fixBnd
 task fixCache
 task fixChangelogs
+task fixMarkerFiles
 task fixPackageInfo
 task fixProjectTemplatesVelocity
 task fixSeparateRepoDeps
@@ -868,6 +869,14 @@ fixChangelogs << {
 		}
 
 		changelogFile.setText changelog, "UTF-8"
+	}
+}
+
+fixMarkerFiles << {
+	def markerFileTree = fileTree(dir: modulesDir, includes: ["**/.lfrbuild-*", "**/.lfrrelease-"])
+
+	markerFileTree.each {
+		it.text = ""
 	}
 }
 
