@@ -1677,7 +1677,17 @@ writeDependencyVersions << {
 }
 
 writeGradleTestsScript << {
-	def buildGradleFiles = fileTree(dir: new File(modulesDir, "sdk"), exclude: ["gradle-plugins-gulp/", "gradle-plugins-js-module-config-generator/", "gradle-plugins-js-transpiler/", "gradle-plugins-node/"], include: "**/build.gradle")
+	def testProperties = GUtil.loadProperties(new File(portalDir, "test.properties"))
+
+	def pluginExclude = testProperties.getProperty("gradle.plugins.test.excludes")
+
+	def pluginExcludes = pluginExclude.split(",")
+
+	pluginExcludes = pluginExcludes.collect {
+		"${it}/"
+	}
+
+	def buildGradleFiles = fileTree(dir: new File(modulesDir, "sdk"), excludes: pluginExcludes, include: "**/build.gradle")
 
 	def dirPath = portalDir.toPath()
 
