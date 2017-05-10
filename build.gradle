@@ -1150,10 +1150,10 @@ initSeparateRepos << {
 initSeparateReposGit << {
 	def gitRepoFileTree = fileTree(dir: modulesDir, include: "**/.gitrepo")
 
-	def gitAttributesTemplateFile = rootProject.file("separate_repos_gitattributes.tmpl")
+	// def gitAttributesTemplateFile = rootProject.file("separate_repos_gitattributes.tmpl")
 	def gitIgnoreTemplateFile = rootProject.file("separate_repos_gitignore.tmpl")
 
-	def gitAttributesTemplate = gitAttributesTemplateFile.text.normalize()
+	// def gitAttributesTemplate = gitAttributesTemplateFile.text.normalize()
 	def gitIgnoreTemplate = gitIgnoreTemplateFile.text.normalize()
 
 	def excludeReadOnly = Boolean.getBoolean("exclude.read.only")
@@ -1171,9 +1171,9 @@ initSeparateReposGit << {
 
 		gitIgnoreFile.setText gitIgnoreTemplate, "UTF-8"
 
-		def gitAttributesFile = new File(gitRepoDir, ".gitattributes")
+		// def gitAttributesFile = new File(gitRepoDir, ".gitattributes")
 
-		gitAttributesFile.setText gitAttributesTemplate, "UTF-8"
+		// gitAttributesFile.setText gitAttributesTemplate, "UTF-8"
 	}
 }
 
