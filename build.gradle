@@ -7,6 +7,8 @@ import java.util.zip.ZipFile
 import groovy.io.FileType
 import groovy.io.FileVisitResult
 
+import groovy.json.JsonSlurper
+
 import groovyx.gpars.GParsPool
 
 import org.apache.commons.codec.digest.DigestUtils
@@ -59,6 +61,7 @@ task checkEmptyPackages
 task checkJenkins
 task checkKeywords
 task checkImplicitPortlets
+task checkPackageJson
 task checkPortlets
 task consolidateLang
 task copyLibToCache
@@ -442,6 +445,31 @@ checkImplicitPortlets << {
 		}
 
 		println it
+	}
+}
+
+checkPackageJson << {
+	def packageJsonFileTree = fileTree(dir: modulesDir, excludes: ["**/archetype-resources/", "**/bin/", "**/build/", "**/classes/", "**/node_modules/"], include: "**/package.json")
+
+	def jsonSlurper = new JsonSlurper()
+
+	packageJsonFileTree.each {
+		packageJsonFile ->
+
+		def dir = packageJsonFile.parentFile
+
+		def bndBndFile = new File(dir, "bnd.bnd")
+
+		if (!bndBndFile.exists()) {
+			return
+		}
+
+		def bndProperties = GUtil.loadProperties(bndBndFile)
+
+		def packageJson = jsonSlurper.parse(packageJsonFile)
+
+		assert dir.name == packageJson.name
+		assert bndProperties.getProperty("Bundle-Version") == packageJson.version
 	}
 }
 
