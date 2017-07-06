@@ -13,12 +13,14 @@ import groovyx.gpars.GParsPool
 
 import org.apache.commons.codec.digest.DigestUtils
 import org.apache.commons.lang3.StringUtils
+import org.apache.commons.text.WordUtils
 
 buildscript {
 	dependencies {
 		classpath "com.liferay.portal:com.liferay.portal.kernel:latest.release"
 		classpath "commons-codec:commons-codec:1.10"
-		classpath "org.apache.commons:commons-lang3:3.4"
+		classpath "org.apache.commons:commons-lang3:3.6"
+		classpath "org.apache.commons:commons-text:1.1"
 		classpath "org.codehaus.gpars:gpars:1.2.1"
 	}
 
@@ -92,6 +94,7 @@ task moveLPS64532
 task moveModules
 task moveStatic
 task printExtensions
+task printPluginChangelog
 task removeTouch
 task renameBuildFiles
 task replaceBuildCIPortalFiles
@@ -1511,6 +1514,65 @@ printExtensions << {
 	}
 
 	println extensions
+}
+
+printPluginChangelog << {
+	assert project.properties["pluginName"] : "Please provide -PpluginName"
+
+	def getBundleNameSymbolicName = {
+		dir ->
+
+		def properties = GUtil.loadProperties(new File(modulesDir, "${dir}/bnd.bnd"))
+
+		[properties["Bundle-Name"], properties["Bundle-SymbolicName"]]
+	}
+
+	def (pluginFullName, pluginSymbolicName) = getBundleNameSymbolicName("sdk/gradle-plugins-${pluginName}")
+	def (toolFullName, toolSymbolicName) = getBundleNameSymbolicName("util/${pluginName}")
+
+	def pluginChangelog = new File(modulesDir, "sdk/gradle-plugins-${pluginName}/CHANGELOG.markdown")
+
+	def oldChangelog = pluginChangelog.text
+
+	def gradlePluginsChangelog = new File(modulesDir, "sdk/gradle-plugins/CHANGELOG.markdown")
+
+	def changelog = StringBuilder.newInstance()
+	def ticketLines = new TreeSet<>()
+
+	def xmlSlurper = new XmlSlurper()
+
+	gradlePluginsChangelog.text.eachMatch(/- \[([A-Z]+-\d+)\]:\s+Update\s+the\s+\[${pluginFullName}]\s+dependency\s+to\s+version\s+(\d+\.\d+\.\d+)\./) {
+		all, ticket, pluginVersion ->
+
+		if (oldChangelog.contains("## ${pluginVersion} - ")) {
+			return
+		}
+
+		def projectNode = xmlSlurper.parse("https://repository.liferay.com/nexus/content/groups/public/com/liferay/${pluginSymbolicName}/${pluginVersion}/${pluginSymbolicName}-${pluginVersion}.pom")
+
+		def toolVersion = projectNode.dependencies.'*'.find {
+			dependencyNode ->
+
+			dependencyNode.artifactId.text() == toolSymbolicName
+		}.version.text()
+
+		changelog << """\
+## ${pluginVersion} - 1970-01-01
+
+### Changed
+- [${ticket}]: Update the [${toolFullName}] dependency to version ${toolVersion}.
+
+"""
+
+		ticketLines << "[${ticket}]: https://issues.liferay.com/browse/${ticket}"
+	}
+
+	ticketLines.each {
+		changelog << it
+		changelog << System.lineSeparator()
+	}
+
+	println changelog
 }
 
 removeTouch << {
