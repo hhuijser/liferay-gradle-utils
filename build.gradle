@@ -1160,12 +1160,6 @@ initSeparateRepos << {
 			}
 		}
 
-		def appBndFile = new File(gitRepoDir, "app.bnd")
-
-		if (!appBndFile.exists()) {
-			tmpBuildGradleTemplate = tmpBuildGradleTemplate.replace('apply plugin: "com.liferay.app.defaults.plugin"\n\n', "")
-		}
-
 		def projectPathPrefix = modulesDirPath.relativize(gitRepoDir.toPath()).toString()
 
 		projectPathPrefix = ":" + projectPathPrefix.replace(File.separatorChar, ':' as char)
