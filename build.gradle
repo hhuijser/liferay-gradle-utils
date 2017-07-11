@@ -1125,6 +1125,8 @@ initPortalBuild {
 }
 
 initSeparateRepos << {
+	def excludeReadOnly = Boolean.getBoolean("exclude.read.only")
+
 	def gitRepoFileTree = fileTree(dir: modulesDir, include: "**/.gitrepo")
 	def modulesDirPath = modulesDir.toPath()
 
@@ -1138,6 +1140,10 @@ initSeparateRepos << {
 
 	gitRepoFileTree.each {
 		gitRepoFile ->
+
+		if (excludeReadOnly && gitRepoFile.text.contains("mode = pull")) {
+			return
+		}
 
 		def gitRepoDir = gitRepoFile.parentFile
 
