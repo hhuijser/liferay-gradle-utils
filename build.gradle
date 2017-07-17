@@ -839,10 +839,10 @@ fixChangelogs << {
 
 		def versions = []
 
-		def pattern = ~/## (\d+\.\d+\.\d+) - .+/
+		def pattern = ~/## (\d+\.\d+\.\d+) - \d\d\d\d-\d\d-\d\d( \[[A-Z]+\])?/
 
 		changelog.eachMatch(pattern) {
-			all, ver ->
+			all, ver, comment ->
 
 			if (limitVersion && (limitVersion != ver)) {
 				return
@@ -885,22 +885,23 @@ fixChangelogs << {
 		}
 
 		changelog = changelog.replaceAll(pattern) {
-			all, ver ->
+			all, ver, comment ->
 
 			if (limitVersion && (limitVersion != ver)) {
 				return all
 			}
 
+			def commentSuffix = comment ?: ""
 			def date = versionDateMap[ver]
 
 			if (date) {
-				return "## ${ver} - ${date}"
+				return "## ${ver} - ${date}${commentSuffix}"
 			}
 
-			return "## ${ver} - *(Unreleased)*"
+			return "## ${ver} - *(Unreleased)*${commentSuffix}"
 		}
 
-		changelogFile.setText changelog, "UTF-8"
+		changelogFile.setText changelog.denormalize(), "UTF-8"
 	}
 }
 
