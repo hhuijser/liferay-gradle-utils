@@ -1521,6 +1521,8 @@ printExtensions << {
 printPluginChangelog << {
 	assert project.properties["pluginName"] : "Please provide -PpluginName"
 
+	def toolName = project.properties["toolName"] ?: pluginName
+
 	def getBundleNameSymbolicName = {
 		dir ->
 
@@ -1530,7 +1532,7 @@ printPluginChangelog << {
 	}
 
 	def (pluginFullName, pluginSymbolicName) = getBundleNameSymbolicName("sdk/gradle-plugins-${pluginName}")
-	def (toolFullName, toolSymbolicName) = getBundleNameSymbolicName("util/${pluginName}")
+	def (toolFullName, toolSymbolicName) = getBundleNameSymbolicName("util/${toolName}")
 
 	def pluginChangelog = new File(modulesDir, "sdk/gradle-plugins-${pluginName}/CHANGELOG.markdown")
 
