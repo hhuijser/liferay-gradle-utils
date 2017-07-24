@@ -1152,27 +1152,11 @@ initSeparateRepos << {
 		def gradlePropertiesFile = new File(gitRepoDir, "gradle.properties")
 		def settingsGradleFile = new File(gitRepoDir, "settings.gradle")
 
-		def buildGradleFileTree = fileTree(dir: gitRepoDir, include: "**/build.gradle")
-
-		def buildGradles = buildGradleFileTree.inject("") {
-			acc, f ->
-
-			acc += f.text
-		}
-
-		def tmpBuildGradleTemplate = buildGradleTemplate
-
-		["lang.merger"].each {
-			if (!buildGradles.contains("apply plugin: \"com.liferay.${it}\"")) {
-				tmpBuildGradleTemplate = tmpBuildGradleTemplate.replace("\t\tclasspath group: \"com.liferay\", name: \"com.liferay.gradle.plugins.${it}\", version: \"latest.release\"\n", "")
-			}
-		}
-
 		def projectPathPrefix = modulesDirPath.relativize(gitRepoDir.toPath()).toString()
 
 		projectPathPrefix = ":" + projectPathPrefix.replace(File.separatorChar, ':' as char)
 
-		buildGradleFile.setText(tmpBuildGradleTemplate, "UTF-8")
+		buildGradleFile.setText(buildGradleTemplate, "UTF-8")
 		gradlePropertiesFile.setText(gradlePropertiesTemplate.replace('[$PROJECT_PATH_PREFIX$]', projectPathPrefix), "ISO-8859-1")
 		settingsGradleFile.setText(settingsGradleTemplate, "UTF-8")
 
