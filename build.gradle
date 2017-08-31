@@ -95,6 +95,7 @@ task moveModules
 task moveStatic
 task printExtensions
 task printPluginChangelog
+task removeGitIgnore
 task removeTouch
 task renameBuildFiles
 task replaceBuildCIPortalFiles
@@ -1561,6 +1562,26 @@ printPluginChangelog << {
 	}
 
 	println changelog
+}
+
+removeGitIgnore << {
+	modulesDir.traverse(
+		preDir: {
+			if (it.name == "node_modules") {
+				return FileVisitResult.SKIP_SUBTREE
+			}
+
+			def gitIgnoreFile = new File(it, ".gitignore")
+			def gitRepoFile = new File(it, ".gitrepo")
+
+			if (gitIgnoreFile.exists() && !gitRepoFile.exists() && gitIgnoreFile.text.contains(".classpath")) {
+				delete gitIgnoreFile
+			}
+
+			return FileVisitResult.CONTINUE
+		},
+		type: FileType.DIRECTORIES
+	)
 }
 
 removeTouch << {
