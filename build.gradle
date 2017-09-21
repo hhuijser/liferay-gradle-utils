@@ -60,9 +60,10 @@ task checkBndServiceInstructions
 task checkBrokenJarsKernel
 task checkCache
 task checkEmptyPackages
+task checkImplicitPortlets
 task checkJenkins
 task checkKeywords
-task checkImplicitPortlets
+task checkLongSQL
 task checkPackageJson
 task checkPortlets
 task consolidateLang
@@ -449,6 +450,24 @@ checkImplicitPortlets << {
 		}
 
 		println it
+	}
+}
+
+checkLongSQL << {
+	assert project.properties["sqlDir"] : "Please provide -PsqlDir"
+
+	def tablesFileTree = fileTree(dir: sqlDir, include: "**/tables.sql")
+
+	def pattern = /\t(\w{30}\w*) [A-Z]/
+
+	tablesFileTree.each {
+		tablesFile ->
+
+		tablesFile.text.eachMatch(pattern) {
+			all, colName ->
+
+			println colName
+		}
 	}
 }
 
