@@ -466,7 +466,7 @@ checkLongSQL << {
 		tablesFile.text.eachMatch(pattern) {
 			all, colName ->
 
-			println colName
+			println "Found long SQL column in ${tablesFile}: ${colName}"
 		}
 	}
 }
