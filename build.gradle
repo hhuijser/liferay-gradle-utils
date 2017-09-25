@@ -1499,25 +1499,46 @@ moveStatic << {
 }
 
 printExtensions << {
-	if (!project.hasProperty("dir")) {
-		throw new GradleException("Please pass -Pdir argument")
-	}
-
 	Set<String> extensions = new TreeSet<String>()
 
-	def rootDir = new File(modulesDir, dir)
+	def rootDir = portalDir
 
-	rootDir.eachFileRecurse {
-		def fileName = it.name
-
-		def pos = fileName.indexOf('.')
-
-		if (pos == -1) {
-			return
-		}
-
-		extensions << fileName.substring(pos + 1)
+	if (project.hasProperty("dir")) {
+		rootDir = new File(rootDir, dir)
 	}
+
+	def excludedDirNames = ["build", "bin", ".gradle", ".git", "classes", "node_modules", "test-classes", "build_gradle", "tmp"]
+
+	rootDir.traverse(
+		preDir: {
+			if (excludedDirNames.contains(it.name)) {
+				return FileVisitResult.SKIP_SUBTREE
+			}
+
+			return FileVisitResult.CONTINUE
+		},
+		type: FileType.FILES,
+		visit: {
+			def fileName = it.name
+
+			def pos = fileName.lastIndexOf('.')
+
+			if (pos == -1) {
+				return
+			}
+
+			def extension = fileName.substring(pos + 1)
+
+			if (extensions.contains(extension)) {
+				return
+			}
+
+			println "Reading ${it}"
+
+			if (!project.hasProperty("content") || it.text.contains(content)) {
+				extensions << extension
+			}
+		})
 
 	println extensions
 }
