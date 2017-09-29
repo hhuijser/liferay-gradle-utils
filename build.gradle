@@ -67,6 +67,7 @@ task checkLongSQL
 task checkPackageJson
 task checkPortlets
 task consolidateLang
+task checkLanguages
 task copyLibToCache
 task copyLibsToCache
 task checkMPBnd
@@ -584,6 +585,47 @@ consolidateLang << {
 			}
 
 			println "Copied ${key}=${value} from ${langFile} to ${destLangFile}"
+		}
+	}
+}
+
+checkLanguages << {
+	assert project.properties["dir"] : "Please provide -Pdir"
+
+	def languageFileTree = fileTree(dir: dir, include: "**/src/main/resources/content/Language.properties")
+
+	def languageProperties = languageFileTree.files.inject(new Properties()) {
+		accProperties, curFile ->
+
+		curFile.withInputStream {
+			accProperties.load(it)
+		}
+
+		accProperties
+	}
+
+	def resourceActionsFileTree = fileTree(dir: dir, include: "**/src/main/resources/resource-actions/default.xml")
+
+	def alreadyTranslatedActionKeys = [
+		"ACCESS_IN_CONTROL_PANEL",
+		"ADD_PORTLET_DISPLAY_TEMPLATE",
+		"ADD_TO_PAGE",
+		"CONFIGURATION",
+		"DELETE",
+		"UPDATE",
+		"PERMISSIONS",
+		"VIEW"
+	]
+
+	resourceActionsFileTree.each {
+		resourceActionsFile ->
+
+		resourceActionsFile.text.eachMatch(/<action-key>(\w+)<\/action-key>/) {
+			all, actionKey ->
+
+			if (!alreadyTranslatedActionKeys.contains(actionKey) && !languageProperties.containsKey("action." + actionKey)) {
+				println "The action key '${actionKey}' is not translated"
+			}
 		}
 	}
 }
