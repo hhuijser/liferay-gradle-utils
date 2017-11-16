@@ -78,6 +78,7 @@ task deleteIvyXml(type: Delete)
 task deletePackageInfo
 task deletePortalBuild(type: Delete)
 task diffArtifact
+task dumpSnapshotVersions
 task fixBnd
 task fixCache
 task fixChangelogs
@@ -777,6 +778,56 @@ diffArtifact << {
 	}
 
 	delete jarFileTree
+}
+
+dumpSnapshotVersions << {
+	def jsonSlurper = new JsonSlurper()
+
+	def bndFileTree = fileTree(dir: modulesDir, excludes: ["**/bin/", "**/build/", "**/classes/", "**/node_modules/"], includes: ["apps/**/bnd.bnd", "core/**/bnd.bnd"])
+
+	def properties = bndFileTree.inject(new Properties()) {
+		props, bndFile ->
+
+		def bndProperties = GUtil.loadProperties(bndFile)
+
+		def bundleSymbolicName = bndProperties["Bundle-SymbolicName"]
+		def bundleVersion = bndProperties["Bundle-Version"]
+
+		def result = null
+
+		try {
+			result = jsonSlurper.parse(new URL("https://repository.liferay.com/nexus/service/local/artifact/maven/resolve?r=liferay-public-snapshots&g=com.liferay&a=${bundleSymbolicName}&v=${bundleVersion}-SNAPSHOT"), requestProperties: ["Accept": "application/json"])
+		}
+		catch (Exception e) {
+			logger.info e.message
+		}
+
+		if (!result) {
+			return props
+		}
+
+		def jarURL = "https://repository.liferay.com/nexus/service/local/repositories/liferay-public-snapshots/content${result.data.repositoryPath}"
+
+		def url = new URL("jar:${jarURL}!/")
+
+		def jarURLConnection = (JarURLConnection)url.openConnection()
+
+		def gitSHA = jarURLConnection.mainAttributes.getValue("Git-SHA")
+
+		def value = "${result.data.version}|${gitSHA}|${jarURL}"
+
+		println "${bundleSymbolicName}=${value}"
+
+		props.setProperty bundleSymbolicName, value
+
+		return props
+	}
+
+	def snapshotVersionsFile = new File(modulesDir, "snapshots.properties")
+
+	snapshotVersionsFile.withOutputStream {
+		properties.store it, null
+	}
 }
 
 fixBnd << {
