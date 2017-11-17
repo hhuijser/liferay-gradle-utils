@@ -783,10 +783,16 @@ diffArtifact << {
 dumpSnapshotVersions << {
 	def jsonSlurper = new JsonSlurper()
 
+	def modulesDirPath = modulesDir.toPath()
+
+	def snapshotsDir = new File(modulesDir, ".snapshots")
+
+	delete snapshotsDir
+
 	def bndFileTree = fileTree(dir: modulesDir, excludes: ["**/bin/", "**/build/", "**/classes/", "**/node_modules/"], includes: ["apps/**/bnd.bnd", "core/**/bnd.bnd"])
 
-	def properties = bndFileTree.inject(new Properties()) {
-		props, bndFile ->
+	bndFileTree.each {
+		bndFile ->
 
 		def bndProperties = GUtil.loadProperties(bndFile)
 
@@ -796,14 +802,14 @@ dumpSnapshotVersions << {
 		def result = null
 
 		try {
-			result = jsonSlurper.parse(new URL("https://repository.liferay.com/nexus/service/local/artifact/maven/resolve?r=liferay-public-snapshots&g=com.liferay&a=${bundleSymbolicName}&v=${bundleVersion}-SNAPSHOT"), requestProperties: ["Accept": "application/json"])
+			result = jsonSlurper.parse(new URL("https://repository.liferay.com/nexus/service/local/artifact/maven/resolve?r=liferay-public-snapshots&g=com.liferay&a=${bundleSymbolicName}&v=LATEST"), requestProperties: ["Accept": "application/json"])
 		}
 		catch (Exception e) {
 			logger.info e.message
 		}
 
-		if (!result) {
-			return props
+		if (!result || !result.data.baseVersion.endsWith("-SNAPSHOT")) {
+			return
 		}
 
 		def jarURL = "https://repository.liferay.com/nexus/service/local/repositories/liferay-public-snapshots/content${result.data.repositoryPath}"
@@ -812,21 +818,23 @@ dumpSnapshotVersions << {
 
 		def jarURLConnection = (JarURLConnection)url.openConnection()
 
-		def gitSHA = jarURLConnection.mainAttributes.getValue("Git-SHA")
+		def gitId = jarURLConnection.mainAttributes.getValue("Git-SHA")
 
-		def value = "${result.data.version}|${gitSHA}|${jarURL}"
+		if (!gitId) {
+			return
+		}
 
-		println "${bundleSymbolicName}=${value}"
+		def snapshotDir = new File(snapshotsDir, String.valueOf(modulesDirPath.relativize(bndFile.parentFile.toPath())))
 
-		props.setProperty bundleSymbolicName, value
+		snapshotDir.mkdirs()
 
-		return props
-	}
+		def snapshotFile = new File(snapshotDir, "snapshot.properties")
 
-	def snapshotVersionsFile = new File(modulesDir, "snapshots.properties")
+		snapshotFile.setText """\
+snapshot.git.id=${gitId}
+snapshot.url=${jarURL}""", "UTF-8"
 
-	snapshotVersionsFile.withOutputStream {
-		properties.store it, null
+		println snapshotFile
 	}
 }
 
