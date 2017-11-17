@@ -1,5 +1,7 @@
 import com.liferay.portal.kernel.util.UnicodeProperties
 
+import java.text.SimpleDateFormat
+
 import java.util.concurrent.ConcurrentHashMap
 import java.util.regex.Pattern
 import java.util.zip.ZipFile
@@ -789,6 +791,8 @@ dumpSnapshotVersions << {
 
 	delete snapshotsDir
 
+	def dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.S z")
+
 	def bndFileTree = fileTree(dir: modulesDir, excludes: ["**/bin/", "**/build/", "**/classes/", "**/node_modules/"], includes: ["apps/**/bnd.bnd", "core/**/bnd.bnd"])
 
 	bndFileTree.each {
@@ -799,30 +803,55 @@ dumpSnapshotVersions << {
 		def bundleSymbolicName = bndProperties["Bundle-SymbolicName"]
 		def bundleVersion = bndProperties["Bundle-Version"]
 
+		def rootURL = "https://repository.liferay.com/nexus/service/local/repositories/liferay-public-snapshots/content"
+
 		def result = null
 
 		try {
-			result = jsonSlurper.parse(new URL("https://repository.liferay.com/nexus/service/local/artifact/maven/resolve?r=liferay-public-snapshots&g=com.liferay&a=${bundleSymbolicName}&v=LATEST"), requestProperties: ["Accept": "application/json"])
+			result = jsonSlurper.parse(new URL("${rootURL}/com/liferay/${bundleSymbolicName}/"), requestProperties: ["Accept": "application/json"])
 		}
 		catch (Exception e) {
 			logger.info e.message
 		}
 
-		if (!result || !result.data.baseVersion.endsWith("-SNAPSHOT")) {
+		if (!result || !result.data) {
 			return
 		}
 
-		def jarURL = "https://repository.liferay.com/nexus/service/local/repositories/liferay-public-snapshots/content${result.data.repositoryPath}"
+		Date latestLastModifiedDate = null
+		String latestURL = null
 
-		def url = new URL("jar:${jarURL}!/")
+		for (def bundleObj in result.data) {
+			if (!bundleObj.text.endsWith("-SNAPSHOT")) {
+				continue
+			}
 
-		def jarURLConnection = (JarURLConnection)url.openConnection()
+			def artResult = jsonSlurper.parse(new URL("${rootURL}${bundleObj.relativePath}"), requestProperties: ["Accept": "application/json"])
 
-		def gitId = jarURLConnection.mainAttributes.getValue("Git-SHA")
+			for (def artObj in artResult.data) {
+				if (!artObj.text.endsWith(".jar") || !Character.isDigit(artObj.text.charAt(artObj.text.size() - 5))) {
+					continue
+				}
 
-		if (!gitId) {
+				def artLastModifiedDate = dateFormat.parse(artObj.lastModified)
+				def artURL = "${rootURL}${artObj.relativePath}"
+
+				if (!latestLastModifiedDate || (artLastModifiedDate > latestLastModifiedDate)) {
+					latestLastModifiedDate = artLastModifiedDate
+					latestURL = artURL
+				}
+			}
+		}
+
+		if (!latestURL) {
 			return
 		}
+
+		def jarURL = new URL("jar:${latestURL}!/")
+
+		def jarURLConnection = (JarURLConnection)jarURL.openConnection()
+
+		def latestLastModifiedTime = Long.valueOf(jarURLConnection.mainAttributes.getValue("Bnd-LastModified"))
 
 		def snapshotDir = new File(snapshotsDir, String.valueOf(modulesDirPath.relativize(bndFile.parentFile.toPath())))
 
@@ -831,8 +860,8 @@ dumpSnapshotVersions << {
 		def snapshotFile = new File(snapshotDir, "snapshot.properties")
 
 		snapshotFile.setText """\
-snapshot.git.id=${gitId}
-snapshot.url=${jarURL}""", "UTF-8"
+snapshot.last.modified=${latestLastModifiedTime}
+snapshot.url=${latestURL}""", "UTF-8"
 
 		println snapshotFile
 	}
