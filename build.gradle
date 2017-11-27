@@ -15,6 +15,7 @@ import groovyx.gpars.GParsPool
 
 import org.apache.commons.codec.digest.DigestUtils
 import org.apache.commons.lang3.StringUtils
+import org.apache.commons.lang3.time.FastDateFormat
 import org.apache.commons.text.WordUtils
 
 buildscript {
@@ -791,79 +792,81 @@ dumpSnapshotVersions << {
 
 	delete snapshotsDir
 
-	def dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.S z")
+	def dateFormat = FastDateFormat.getInstance("yyyy-MM-dd HH:mm:ss.S z")
 
 	def bndFileTree = fileTree(dir: modulesDir, excludes: ["**/bin/", "**/build/", "**/classes/", "**/node_modules/"], includes: ["apps/**/bnd.bnd", "core/**/bnd.bnd"])
 
-	bndFileTree.each {
-		bndFile ->
+	GParsPool.withPool {
+		bndFileTree.eachParallel {
+			bndFile ->
 
-		def bndProperties = GUtil.loadProperties(bndFile)
+			def bndProperties = GUtil.loadProperties(bndFile)
 
-		def bundleSymbolicName = bndProperties["Bundle-SymbolicName"]
-		def bundleVersion = bndProperties["Bundle-Version"]
+			def bundleSymbolicName = bndProperties["Bundle-SymbolicName"]
+			def bundleVersion = bndProperties["Bundle-Version"]
 
-		def rootURL = "https://repository.liferay.com/nexus/service/local/repositories/liferay-public-snapshots/content"
+			def rootURL = "https://repository.liferay.com/nexus/service/local/repositories/liferay-public-snapshots/content"
 
-		def result = null
+			def result = null
 
-		try {
-			result = jsonSlurper.parse(new URL("${rootURL}/com/liferay/${bundleSymbolicName}/"), requestProperties: ["Accept": "application/json"])
-		}
-		catch (Exception e) {
-			logger.info e.message
-		}
-
-		if (!result || !result.data) {
-			return
-		}
-
-		Date latestLastModifiedDate = null
-		String latestURL = null
-
-		for (def bundleObj in result.data) {
-			if (!bundleObj.text.endsWith("-SNAPSHOT")) {
-				continue
+			try {
+				result = jsonSlurper.parse(new URL("${rootURL}/com/liferay/${bundleSymbolicName}/"), requestProperties: ["Accept": "application/json"])
+			}
+			catch (Exception e) {
+				logger.info e.message
 			}
 
-			def artResult = jsonSlurper.parse(new URL("${rootURL}${bundleObj.relativePath}"), requestProperties: ["Accept": "application/json"])
+			if (!result || !result.data) {
+				return
+			}
 
-			for (def artObj in artResult.data) {
-				if (!artObj.text.endsWith(".jar") || !Character.isDigit(artObj.text.charAt(artObj.text.size() - 5))) {
+			Date latestLastModifiedDate = null
+			String latestURL = null
+
+			for (def bundleObj in result.data) {
+				if (!bundleObj.text.endsWith("-SNAPSHOT")) {
 					continue
 				}
 
-				def artLastModifiedDate = dateFormat.parse(artObj.lastModified)
-				def artURL = "${rootURL}${artObj.relativePath}"
+				def artResult = jsonSlurper.parse(new URL("${rootURL}${bundleObj.relativePath}"), requestProperties: ["Accept": "application/json"])
 
-				if (!latestLastModifiedDate || (artLastModifiedDate > latestLastModifiedDate)) {
-					latestLastModifiedDate = artLastModifiedDate
-					latestURL = artURL
+				for (def artObj in artResult.data) {
+					if (!artObj.text.endsWith(".jar") || !Character.isDigit(artObj.text.charAt(artObj.text.size() - 5))) {
+						continue
+					}
+
+					def artLastModifiedDate = dateFormat.parse(artObj.lastModified)
+					def artURL = "${rootURL}${artObj.relativePath}"
+
+					if (!latestLastModifiedDate || (artLastModifiedDate > latestLastModifiedDate)) {
+						latestLastModifiedDate = artLastModifiedDate
+						latestURL = artURL
+					}
 				}
 			}
-		}
 
-		if (!latestURL) {
-			return
-		}
+			if (!latestURL) {
+				return
+			}
 
-		def jarURL = new URL("jar:${latestURL}!/")
+			def jarURL = new URL("jar:${latestURL}!/")
 
-		def jarURLConnection = (JarURLConnection)jarURL.openConnection()
+			def jarURLConnection = (JarURLConnection)jarURL.openConnection()
 
-		def latestLastModifiedTime = Long.valueOf(jarURLConnection.mainAttributes.getValue("Bnd-LastModified"))
+			def latestLastModifiedTime = Long.valueOf(jarURLConnection.mainAttributes.getValue("Bnd-LastModified"))
 
-		def snapshotDir = new File(snapshotsDir, String.valueOf(modulesDirPath.relativize(bndFile.parentFile.toPath())))
+			def snapshotDir = new File(snapshotsDir, String.valueOf(modulesDirPath.relativize(bndFile.parentFile.toPath())))
 
-		snapshotDir.mkdirs()
+			snapshotDir.mkdirs()
 
-		def snapshotFile = new File(snapshotDir, "snapshot.properties")
+			def snapshotFile = new File(snapshotDir, "snapshot.properties")
 
-		snapshotFile.setText """\
+			snapshotFile.setText """\
 snapshot.last.modified=${latestLastModifiedTime}
 snapshot.url=${latestURL}""", "UTF-8"
 
-		println snapshotFile
+			println snapshotFile
+		}
 	}
 }
 
