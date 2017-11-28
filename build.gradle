@@ -90,6 +90,7 @@ task fixPackageInfo
 task fixProjectTemplatesVelocity
 task fixSeparateRepoDeps
 task fixShrinkwrap
+task fixTestClasspaths
 task fixWrongPrepNext
 task initApps
 task initPortalBuild
@@ -1189,6 +1190,135 @@ fixShrinkwrap << {
 
 		shrinkwrapFile.text = shrinkwrapFile.text.replaceAll(/\t+"(?:from|resolved)": "http.+",*\r*\n/, "")
 	}
+}
+
+fixTestClasspaths << {
+	def buildGradleFile = new File(modulesDir, "build.gradle")
+
+	assert buildGradleFile.text.contains("ignoreFailures = false") : "Please configure build.gradle to not ignore test failures."
+
+	def gradlewFile = new File(portalDir, "gradlew.bat")
+
+	def gradlewExecutable = gradlewFile.absolutePath
+
+	def liferayHomeDir = new File(portalDir.parentFile, "bundles")
+
+	def liferayHome = liferayHomeDir.absolutePath.replace(File.separatorChar, '/' as char)
+
+	def collectPetraErrorDependencies = {
+		map, dir ->
+
+		if (!dir.exists()) {
+			return
+		}
+
+		dir.eachDir {
+			def petraBndFile = new File(it, "bnd.bnd")
+
+			if (!petraBndFile.exists()) {
+				return
+			}
+
+			def name = it.name.substring(6)
+
+			map["java.lang.NoClassDefFoundError: com/liferay/petra/${name}/"] = "testCompile group: \"com.liferay\", name: \"com.liferay.petra.${name}\", version: \"1.0.0\""
+		}
+	}
+
+	def errorDependencies = [
+		'error: package com.liferay.portal.json': 'testCompile group: "com.liferay.portal", name: "com.liferay.portal.impl", version: "2.0.0"',
+		'error: package com.liferay.portal.kernel.': 'testCompile group: "com.liferay.portal", name: "com.liferay.portal.kernel", version: "2.0.0"',
+		'error: package com.liferay.portal.language': 'testCompile group: "com.liferay.portal", name: "com.liferay.portal.impl", version: "2.0.0"',
+		'java.lang.ClassNotFoundException: com.germinus.easyconf.': 'testCompile group: "easyconf", name: "easyconf", version: "0.9.5"',
+		'java.lang.ClassNotFoundException: org.apache.commons.httpclient.': 'testCompile group: "commons-httpclient", name: "commons-httpclient", version: "3.1"',
+		'java.lang.NoClassDefFoundError: com/liferay/registry/': 'testCompile group: "com.liferay", name: "com.liferay.registry.api", version: "1.0.0"'
+	]
+
+	collectPetraErrorDependencies(errorDependencies, new File(modulesDir, "apps/foundation/petra"))
+	collectPetraErrorDependencies(errorDependencies, new File(modulesDir, "apps/static/petra"))
+	collectPetraErrorDependencies(errorDependencies, new File(modulesDir, "core/petra"))
+
+	modulesDir.traverse(
+		preDir: {
+			moduleDir ->
+
+			def fixedFile = new File(moduleDir, ".test-classpath-fixed")
+			def ignoreFile = new File(moduleDir, ".test-classpath-ignore")
+
+			if (fixedFile.exists() || ignoreFile.exists()) {
+				return FileVisitResult.SKIP_SUBTREE
+			}
+
+			delete new File(moduleDir, "settings.gradle")
+
+			def bndFile = new File(moduleDir, "bnd.bnd")
+
+			if (!bndFile.exists()) {
+				return FileVisitResult.CONTINUE
+			}
+
+			File srcTestDir = new File(moduleDir, "src/test")
+
+			if (!srcTestDir.exists()) {
+				return FileVisitResult.SKIP_SUBTREE
+			}
+
+			println "Testing ${moduleDir}..."
+
+			def gradleFile = new File(moduleDir, "build.gradle")
+
+			while (true) {
+				def errorStream = new ByteArrayOutputStream()
+				def outputStream = new ByteArrayOutputStream()
+
+				def execResult = exec {
+					args "test", "--daemon", "--parallel"
+					args "-Dblacklist.cfg.name=com.liferay.portal.bundle.blacklist.internal.BundleBlacklistConfiguration.cfg"
+					args "-Dliferay.home=${liferayHome}"
+
+					errorOutput = errorStream
+					executable = gradlewExecutable
+					ignoreExitValue = true
+					standardOutput = outputStream
+					workingDir = moduleDir
+				}
+
+				def errorString = errorStream.toString()
+				def outputString = outputStream.toString()
+
+				println errorString
+				println outputString
+
+				if (execResult.exitValue == 0) {
+					break
+				}
+
+				def added = false
+
+				errorDependencies.each {
+					err, dep ->
+
+					if (errorString.contains(err) || outputString.contains(err)) {
+						added = true
+
+						gradleFile.text = gradleFile.text.replace('dependencies {', """\
+dependencies {
+	${dep}""")
+
+						println "Added '${dep}' to ${gradleFile}"
+					}
+				}
+
+				if (!added) {
+					throw new GradleException("Unable to fix test classpath of ${moduleDir}")
+				}
+			}
+
+			fixedFile.createNewFile()
+
+			return FileVisitResult.SKIP_SUBTREE
+		},
+		type: FileType.DIRECTORIES)
 }
 
 fixWrongPrepNext << {
