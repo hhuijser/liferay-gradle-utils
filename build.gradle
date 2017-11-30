@@ -103,6 +103,7 @@ task moveStatic
 task printExtensions
 task printPluginChangelog
 task removeGitIgnore
+task removeLanguageAutomaticLabels
 task removeTouch
 task renameBuildFiles
 task replaceBuildCIPortalFiles
@@ -1885,6 +1886,35 @@ removeGitIgnore << {
 		},
 		type: FileType.DIRECTORIES
 	)
+}
+
+removeLanguageAutomaticLabels << {
+	portalDir.traverse(
+		nameFilter: ~/Language_.+\.properties/,
+		preDir: {
+			def dirName = it.name
+
+			if (dirName in ["bin", "build", "classes", "node_modules", "sdk"]) {
+				return FileVisitResult.SKIP_SUBTREE
+			}
+
+			def gitRepoFile = new File(it, ".gitrepo")
+
+			if (gitRepoFile.exists() && gitRepoFile.text.contains("mode = pull")) {
+				return FileVisitResult.SKIP_SUBTREE
+			}
+		},
+		type: FileType.FILES
+	) {
+		def text = it.getText("UTF-8")
+
+		text = text.replace(" (Automatic Copy)", "")
+		text = text.replace(" (Automatic Translation)", "")
+
+		it.setText text, "UTF-8"
+
+		println "Updated ${it}"
+	}
 }
 
 removeTouch << {
