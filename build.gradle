@@ -1834,20 +1834,12 @@ printPluginChangelog << {
 
 	def xmlSlurper = new XmlSlurper()
 
-	gradlePluginsChangelog.text.eachMatch(/- \[([A-Z]+-\d+)\]:\s+Update\s+the\s+\[${pluginFullName}]\s+dependency\s+to\s+version\s+(\d+\.\d+\.\d+)\./) {
-		all, ticket, pluginVersion ->
+	gradlePluginsChangelog.text.eachMatch(/- \[([A-Z]+-\d+)\]:\s+Update\s+the\s+\[${pluginFullName}]\s+dependency\s+to\s+version\s+(\d+\.\d+\.\d+)\.\s+- \[([A-Z]+-\d+)\]:\s+Update\s+the\s+\[${toolFullName}]\s+dependency\s+to\s+version\s+(\d+\.\d+\.\d+)\./) {
+		all, ticket, pluginVersion, toolTicket, toolVersion ->
 
 		if (oldChangelog.contains("## ${pluginVersion} - ")) {
 			return
 		}
-
-		def projectNode = xmlSlurper.parse("https://repository.liferay.com/nexus/content/groups/public/com/liferay/${pluginSymbolicName}/${pluginVersion}/${pluginSymbolicName}-${pluginVersion}.pom")
-
-		def toolVersion = projectNode.dependencies.'*'.find {
-			dependencyNode ->
-
-			dependencyNode.artifactId.text() == toolSymbolicName
-		}.version.text()
 
 		changelog << """\
 ## ${pluginVersion} - 1970-01-01
