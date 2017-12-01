@@ -1875,11 +1875,20 @@ removeGitIgnore << {
 				return FileVisitResult.SKIP_SUBTREE
 			}
 
-			def gitIgnoreFile = new File(it, ".gitignore")
 			def gitRepoFile = new File(it, ".gitrepo")
 
-			if (gitIgnoreFile.exists() && !gitRepoFile.exists() && gitIgnoreFile.text.contains(".classpath")) {
-				delete gitIgnoreFile
+			if (!gitRepoFile.exists()) {
+				def buildGradleFile = new File(it, "build.gradle")
+
+				if (buildGradleFile.exists() && buildGradleFile.text.contains("com.liferay.root.defaults.plugin")) {
+					delete buildGradleFile
+				}
+
+				def gitIgnoreFile = new File(it, ".gitignore")
+
+				if (gitIgnoreFile.exists() && gitIgnoreFile.text.contains(".classpath")) {
+					delete gitIgnoreFile
+				}
 			}
 
 			return FileVisitResult.CONTINUE
