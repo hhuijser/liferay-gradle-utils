@@ -4,6 +4,7 @@ import java.text.SimpleDateFormat
 
 import java.util.concurrent.ConcurrentHashMap
 import java.util.regex.Pattern
+import java.util.jar.JarFile
 import java.util.zip.ZipFile
 
 import groovy.io.FileType
@@ -82,6 +83,7 @@ task deletePackageInfo
 task deletePortalBuild(type: Delete)
 task diffArtifact
 task dumpSnapshotVersions
+task findClass
 task fixBnd
 task fixCache
 task fixChangelogs
@@ -869,6 +871,71 @@ snapshot.url=${latestURL}""", "UTF-8"
 
 			println snapshotFile
 		}
+	}
+}
+
+findClass << {
+	assert project.properties["artGroup"] : "Please provide -PartGroup"
+	assert project.properties["artName"] : "Please provide -PartName"
+	assert project.properties["artVersion"] : "Please provide -PartVersion"
+	assert project.properties["fqcn"] : "Please provide -Pfqcn"
+
+	def cp = fqcn.replace('.' as char, '/' as char) + ".class"
+
+	VersionNumber versionNumber = VersionNumber.parse(artVersion)
+
+	while (true) {
+		Dependency dependency = dependencies.create(group: artGroup, name: artName, version: versionNumber.toString())
+
+		Configuration configuration = configurations.detachedConfiguration(dependency)
+
+		configuration.transitive = false
+
+		def artFile = null
+
+		println "Downloading '${artGroup}:${artName}:${versionNumber}'..."
+
+		try {
+			artFile = configuration.singleFile
+		}
+		catch (Exception e) {
+		}
+
+		if (!artFile) {
+			def newMajor = versionNumber.major
+			def newMinor = versionNumber.minor
+
+			if (newMajor == 0) {
+				break
+			}
+
+			if (versionNumber.micro == 0) {
+				newMajor++
+			}
+			else {
+				newMinor++
+			}
+
+			versionNumber = new VersionNumber(newMajor, newMinor, 0, null)
+
+			continue
+		}
+
+		def jarFile = new JarFile(artFile)
+
+		def zipEntry = null
+
+		jarFile.withCloseable {
+			zipEntry = jarFile.getEntry(cp)
+		}
+
+		if (zipEntry) {
+			println "Class '${fqcn}' found in '${artGroup}:${artName}:${versionNumber}'."
+
+			return
+		}
+
+		versionNumber = new VersionNumber(versionNumber.major, versionNumber.minor, versionNumber.micro + 1, null)
 	}
 }
 
