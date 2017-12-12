@@ -117,22 +117,23 @@ task writeGradleTestsScript
 task writeSettingsIncludes
 
 addPortalBuild << {
-	def buildXmlFiles = fileTree(dir: modulesDir, exclude: "*/**/samples/", include: "*/**/build.xml")
+	assert project.properties["dirName"] : "Please provide -PdirName"
 
-	buildXmlFiles.each {
-		def portalBuildFile = new File(it.parentFile, "portal.build")
+	def modulesRootDir = new File(portalDir.parentFile, dirName)
 
-		if (portalBuildFile.exists()) {
-			return
-		}
+	assert modulesRootDir.exists()
 
-		def created = portalBuildFile.createNewFile()
+	def moduleFileTree = fileTree(dir: modulesRootDir, excludes: ["**/bin/", "**/build/", "**/classes/", "**/node_modules/", "**/*-test/"], includes: ["*/**/bnd.bnd", "*/**/gulpfile.js"])
 
-		if (created) {
-			println "Created " + portalBuildFile
-		}
-		else {
-			throw new GradleException("Unable to create " + portalBuildFile)
+	moduleFileTree.each {
+		def moduleDir = it.parentFile
+
+		def lfrbuildPortalFile = new File(it.parentFile, ".lfrbuild-portal")
+
+		if (!lfrbuildPortalFile.exists()) {
+			lfrbuildPortalFile.createNewFile()
+
+			println "Added ${lfrbuildPortalFile}"
 		}
 	}
 }
