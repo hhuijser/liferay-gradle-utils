@@ -89,6 +89,7 @@ task fixCache
 task fixChangelogs
 task fixMarkerFiles
 task fixPackageInfo
+task fixPluginTags
 task fixProjectTemplatesVelocity
 task fixSeparateRepoDeps
 task fixShrinkwrap
@@ -1173,6 +1174,77 @@ fixPackageInfo << {
 				packageInfoFile.text = "version 1.0.0"
 			}
 		}
+	}
+}
+
+fixPluginTags << {
+	def pluginTagsPropertiesFile = file("plugin-tags.properties")
+
+	def pluginTagsProperties = GUtil.loadProperties(pluginTagsPropertiesFile)
+
+	def buildGradleFileTree = fileTree(dir: new File(modulesDir, "sdk"), include: "*/build.gradle")
+
+	buildGradleFileTree.each {
+		buildGradleFile ->
+
+		def pluginDir = buildGradleFile.parentFile
+
+		def bndBndFile = new File(pluginDir, "bnd.bnd")
+
+		if (!bndBndFile.text.contains("Bundle-Description:")) {
+			return
+		}
+
+		def pluginName = pluginDir.name
+
+		def tags = new TreeSet<String>()
+
+		def tagsString = pluginTagsProperties.getProperty(pluginName)
+
+		if (tagsString) {
+			tags.addAll tagsString.tokenize(",")
+		}
+
+		def buildGradle = buildGradleFile.text
+
+		if (!buildGradle.contains('apply plugin: "com.gradle.plugin-publish"')) {
+			buildGradle = """\
+apply plugin: \"com.gradle.plugin-publish\"
+${buildGradle}"""
+		}
+
+		def matcher = buildGradle =~ /pluginBundle \{\s+tags = \["(.+)"\]\s+\}/
+
+		if (!matcher.find()) {
+			tagsString = tags.join('", "')
+
+			buildGradle = """\
+${buildGradle}
+
+pluginBundle {
+	tags = [\"${tagsString}\"]
+}"""
+		}
+		else {
+			tagsString = matcher.group(1)
+
+			tags.addAll tagsString.tokenize('", "')
+
+			tagsString = tags.join('", "')
+
+			buildGradle = matcher.replaceFirst """\
+pluginBundle {
+	tags = [\"${tagsString}\"]
+}"""
+		}
+
+		pluginTagsProperties.setProperty pluginName, tags.join(",")
+
+		buildGradleFile.text = buildGradle.trim()
+	}
+
+	pluginTagsPropertiesFile.withWriter {
+		pluginTagsProperties.store it, null
 	}
 }
 
