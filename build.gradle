@@ -107,6 +107,7 @@ task printExtensions
 task printPluginChangelog
 task removeGitIgnore
 task removeLanguageAutomaticLabels
+task removeOldSubrepos
 task removeTouch
 task renameBuildFiles
 task replaceBuildCIPortalFiles
@@ -2056,6 +2057,27 @@ removeLanguageAutomaticLabels << {
 
 		println "Updated ${it}"
 	}
+}
+
+removeOldSubrepos << {
+	modulesDir.traverse(
+		preDir: {
+			def gitRepoFile = new File(it, ".gitrepo")
+			def settingsGradleFile = new File(it, "settings.gradle")
+
+			if (!gitRepoFile.exists() && settingsGradleFile.exists() && settingsGradleFile.text.contains("com.liferay.settings.plugin")) {
+				delete settingsGradleFile
+				delete new File(it, ".gitignore")
+				delete new File(it, "build.gradle")
+				delete new File(it, "gradle.properties")
+
+				return FileVisitResult.SKIP_SUBTREE
+			}
+
+			return FileVisitResult.CONTINUE
+		},
+		type: FileType.DIRECTORIES
+	)
 }
 
 removeTouch << {
