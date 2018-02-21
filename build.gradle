@@ -1022,7 +1022,7 @@ fixChangelogs << {
 			"### ${c}\n"
 		}
 
-		changelog = changelog.replaceAll(/#([\d|A-Z])/) {
+		changelog = changelog.replaceAll(/(?m)^#([\d|A-Z])/) {
 			all, c ->
 
 			"# ${c}"
