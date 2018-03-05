@@ -1097,7 +1097,7 @@ fixChangelogs << {
 					return
 				}
 
-				def calendar = Calendar.getInstance()
+				def calendar = Calendar.getInstance(TimeZone.getTimeZone("America/Los_Angeles"))
 
 				calendar.timeInMillis = rootNode.data.uploaded.text().toLong()
 
