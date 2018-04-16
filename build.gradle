@@ -1335,9 +1335,23 @@ fixShrinkwrap << {
 }
 
 fixTestClasspaths << {
-	def buildGradleFile = new File(modulesDir, "build.gradle")
+	def taskName = project.properties["taskName"] ?: "test"
 
-	assert buildGradleFile.text.contains("ignoreFailures = false") : "Please configure build.gradle to not ignore test failures."
+	def configurationName
+
+	if (taskName == "compileJSP") {
+		configurationName = "compileOnly"
+	}
+	else if (taskName == "test") {
+		def buildGradleFile = new File(modulesDir, "build.gradle")
+
+		assert buildGradleFile.text.contains("ignoreFailures = false") : "Please configure build.gradle to not ignore test failures."
+
+		configurationName = "testCompile"
+	}
+	else {
+		throw new GradleException("Unsupporte task name '${taskName}'")
+	}
 
 	def gradlewFile = new File(portalDir, "gradlew.bat")
 
@@ -1363,24 +1377,31 @@ fixTestClasspaths << {
 
 			def name = it.name.substring(6)
 
-			map["java.lang.NoClassDefFoundError: com/liferay/petra/${name}/"] = "testCompile group: \"com.liferay\", name: \"com.liferay.petra.${name}\", version: \"1.0.0\""
+			def petraDependency = "${configurationName} group: \"com.liferay\", name: \"com.liferay.petra.${name}\", version: \"1.0.0\""
+
+			map["error: package com.liferay.petra.${name} does not exist"] = petraDependency
+			map["java.lang.NoClassDefFoundError: com/liferay/petra/${name}/"] = petraDependency
 		}
 	}
 
 	def errorDependencies = [
-		'error: package com.liferay.portal.json': 'testCompile group: "com.liferay.portal", name: "com.liferay.portal.impl", version: "2.0.0"',
-		'error: package com.liferay.portal.kernel.': 'testCompile group: "com.liferay.portal", name: "com.liferay.portal.kernel", version: "2.0.0"',
-		'error: package com.liferay.portal.language': 'testCompile group: "com.liferay.portal", name: "com.liferay.portal.impl", version: "2.0.0"',
-		'java.lang.ClassNotFoundException: com.germinus.easyconf.': 'testCompile group: "easyconf", name: "easyconf", version: "0.9.5"',
-		'java.lang.ClassNotFoundException: org.apache.commons.httpclient.': 'testCompile group: "commons-httpclient", name: "commons-httpclient", version: "3.1"',
-		'java.lang.NoClassDefFoundError: com/liferay/registry/': 'testCompile group: "com.liferay", name: "com.liferay.registry.api", version: "1.0.0"'
+		'error: package com.liferay.portal.json': "${configurationName} group: \"com.liferay.portal\", name: \"com.liferay.portal.impl\", version: \"2.0.0\"",
+		'error: package com.liferay.portal.kernel.': "${configurationName} group: \"com.liferay.portal\", name: \"com.liferay.portal.kernel\", version: \"2.0.0\"",
+		'error: package com.liferay.portal.language': "${configurationName} group: \"com.liferay.portal\", name: \"com.liferay.portal.impl\", version: \"2.0.0\"",
+		'java.lang.ClassNotFoundException: com.germinus.easyconf.': "${configurationName} group: \"easyconf\", name: \"easyconf\", version: \"0.9.5\"",
+		'java.lang.ClassNotFoundException: org.apache.commons.httpclient.': "${configurationName} group: \"commons-httpclient\", name: \"commons-httpclient\", version: \"3.1\"",
+		'java.lang.NoClassDefFoundError: com/liferay/registry/': "${configurationName} group: \"com.liferay\", name: \"com.liferay.registry.api\", version: \"1.0.0\""
 	]
 
 	collectPetraErrorDependencies(errorDependencies, new File(modulesDir, "apps/foundation/petra"))
 	collectPetraErrorDependencies(errorDependencies, new File(modulesDir, "apps/static/petra"))
 	collectPetraErrorDependencies(errorDependencies, new File(modulesDir, "core/petra"))
 
-	modulesDir.traverse(
+	def modulesRootDir = project.properties["modulesRootDir"] ?: modulesDir
+
+	modulesRootDir = file(modulesRootDir)
+
+	modulesRootDir.traverse(
 		preDir: {
 			moduleDir ->
 
@@ -1399,10 +1420,12 @@ fixTestClasspaths << {
 				return FileVisitResult.CONTINUE
 			}
 
-			File srcTestDir = new File(moduleDir, "src/test")
+			if (taskName == "test") {
+				File srcTestDir = new File(moduleDir, "src/test")
 
-			if (!srcTestDir.exists()) {
-				return FileVisitResult.SKIP_SUBTREE
+				if (!srcTestDir.exists()) {
+					return FileVisitResult.SKIP_SUBTREE
+				}
 			}
 
 			println "Testing ${moduleDir}..."
@@ -1414,7 +1437,7 @@ fixTestClasspaths << {
 				def outputStream = new ByteArrayOutputStream()
 
 				def execResult = exec {
-					args "test", "--daemon", "--parallel"
+					args taskName, "-a", "--daemon", "--parallel"
 					args "-Dblacklist.cfg.name=com.liferay.portal.bundle.blacklist.internal.BundleBlacklistConfiguration.cfg"
 					args "-Dliferay.home=${liferayHome}"
 
