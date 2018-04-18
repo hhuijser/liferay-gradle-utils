@@ -1350,7 +1350,7 @@ fixTestClasspaths << {
 		configurationName = "testCompile"
 	}
 	else {
-		throw new GradleException("Unsupporte task name '${taskName}'")
+		throw new GradleException("Unsupported task name '${taskName}'")
 	}
 
 	def gradlewFile = new File(portalDir, "gradlew.bat")
