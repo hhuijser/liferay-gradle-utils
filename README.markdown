@@ -2,6 +2,12 @@
 
 ## Some Features
 
+### Add missing `.lfrbuild-portal` marker files
+
+```posh
+.\gradlew addPortalBuild '-PdirName=com-liferay-commerce-private'
+```
+
 ### Fix JSP Compilation Classpaths
 
 ```posh
