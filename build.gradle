@@ -1062,6 +1062,8 @@ fixChangelogs << {
 			}
 		}
 
+		changelog = changelog.replace("*(Unreleased)*", "1970-01-01")
+
 		def versions = []
 
 		def pattern = ~/## (\d+\.\d+\.\d+) - \d\d\d\d-\d\d-\d\d( \[[A-Z]+\])?/
