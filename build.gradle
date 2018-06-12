@@ -55,6 +55,7 @@ repositories {
 	mavenCentral()
 }
 
+task addImportPackages
 task addPortalBuild
 task addSeparateReposGradleProperties
 task addStaticBuild
@@ -117,6 +118,42 @@ task wrapper(type: Wrapper)
 task writeDependencyVersions
 task writeGradleTestsScript
 task writeSettingsIncludes
+
+addImportPackages << {
+	assert project.properties["dirName"] : "Please provide -PdirName"
+
+	def modulesRootDir = new File(portalDir.parentFile, dirName)
+
+	assert modulesRootDir.exists()
+
+	def bndBndFileTree = fileTree(dir: modulesRootDir, excludes: ["**/bin/", "**/build/", "**/classes/", "**/node_modules/", "**/*-test/"], include: "*/**/bnd.bnd")
+
+	def importPackages = '''
+Import-Package:\\
+	com.liferay.portal.kernel.dao.search;version="[7.2.0,8.0.0)",\\
+	com.liferay.portal.kernel.search;version="[7.5.0,8.0.0)",\\
+	\\
+	*
+'''
+
+	bndBndFileTree.each {
+		def buildGradleFile = new File(it.parentFile, "build.gradle")
+
+		if (!buildGradleFile.text.contains("com.liferay.portal.kernel")) {
+			return
+		}
+
+		def bndBnd = it.getText("UTF-8")
+
+		if (bndBnd.contains("Import-Package")) {
+			println "WARNING: ${it} contains already an 'Import-Package' header!"
+		}
+
+		bndBnd += importPackages
+
+		it.setText bndBnd, "UTF-8"
+	}
+}
 
 addPortalBuild << {
 	assert project.properties["dirName"] : "Please provide -PdirName"
