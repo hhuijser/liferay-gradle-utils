@@ -1321,7 +1321,7 @@ fixRelengIgnoreVersions << {
 					String newBnd = bnd.replaceFirst(/Bundle-Version: \d+\.\d+\.\d+/, "Bundle-Version: 1.0.0")
 
 					if (bnd != newBnd) {
-						bndBndFile.setText bnd, "UTF-8"
+						bndBndFile.setText newBnd, "UTF-8"
 
 						println "Saved ${bndBndFile}"
 					}
