@@ -92,6 +92,7 @@ task fixMarkerFiles
 task fixPackageInfo
 task fixPluginTags
 task fixProjectTemplatesVelocity
+task fixRelengIgnoreVersions
 task fixSeparateRepoDeps
 task fixShrinkwrap
 task fixTestClasspaths
@@ -1302,6 +1303,35 @@ fixProjectTemplatesVelocity << {
 
 		it.setText content, "UTF-8"
 	}
+}
+
+fixRelengIgnoreVersions << {
+	modulesDir.traverse(
+		preDir: {
+			moduleDir ->
+
+			def bndBndFile = new File(moduleDir, "bnd.bnd")
+
+			if (bndBndFile.exists()) {
+				def relengIgnoreFile = new File(moduleDir, ".lfrbuild-releng-ignore")
+
+				if (relengIgnoreFile.exists()) {
+					def bnd = bndBndFile.getText("UTF-8")
+
+					String newBnd = bnd.replaceFirst(/Bundle-Version: \d+\.\d+\.\d+/, "Bundle-Version: 1.0.0")
+
+					if (bnd != newBnd) {
+						bndBndFile.setText bnd, "UTF-8"
+
+						println "Saved ${bndBndFile}"
+					}
+				}
+
+				return FileVisitResult.SKIP_SUBTREE
+			}
+
+			return FileVisitResult.CONTINUE
+		})
 }
 
 fixSeparateRepoDeps << {
