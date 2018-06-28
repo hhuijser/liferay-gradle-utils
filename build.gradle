@@ -793,8 +793,13 @@ deletePortalBuild {
 diffArtifact << {
 	def artifact = project.properties["art"].tokenize(":")
 
+	def artifactGroupPath = "com/liferay"
 	def artifactName = "com.liferay." + artifact[0]
 	def artifactVersions = artifact[1 .. -1]
+
+	if (artifactName in ["com.liferay.portal.impl", "com.liferay.portal.kernel", "com.liferay.util.bridges", "com.liferay.util.java", "com.liferay.util.taglib"]) {
+		artifactGroupPath = "com/liferay/portal"
+	}
 
 	def combinations = [artifactVersions, ["-sources.jar", ".pom"]].combinations()
 
@@ -806,7 +811,7 @@ diffArtifact << {
 		def artifactVersion = it[0]
 		def artifactSuffix = it[1]
 
-		def url = "https://repository.liferay.com/nexus/content/groups/public/com/liferay/${artifactName}/${artifactVersion}/${artifactName}-${artifactVersion}${artifactSuffix}"
+		def url = "https://repository.liferay.com/nexus/content/groups/public/${artifactGroupPath}/${artifactName}/${artifactVersion}/${artifactName}-${artifactVersion}${artifactSuffix}"
 
 		project.download {
 			src url
