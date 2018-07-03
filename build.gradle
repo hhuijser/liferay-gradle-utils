@@ -110,6 +110,7 @@ task printPluginChangelog
 task removeGitIgnore
 task removeLanguageAutomaticLabels
 task removeOldSubrepos
+task removeSnapshots
 task removeTouch
 task renameBuildFiles
 task replaceBuildCIPortalFiles
@@ -2175,6 +2176,101 @@ removeOldSubrepos << {
 		},
 		type: FileType.DIRECTORIES
 	)
+}
+
+removeSnapshots << {
+	assert project.properties["dirName"] : "Please provide -PdirName"
+
+	def lpkgFileTree = fileTree(dir: new File(portalDir, "../bundles/osgi/marketplace"), include: "*API.lpkg")
+
+	Closure<String> convertModuleVersion = {
+		moduleVersion ->
+
+		def moduleVersionNumber = VersionNumber.parse(moduleVersion)
+
+		moduleVersionNumber = new VersionNumber(moduleVersionNumber.major, moduleVersionNumber.minor, 0, null)
+
+		moduleVersionNumber as String
+	}
+
+	def moduleVersions = lpkgFileTree.collectEntries {
+		lpkgFile ->
+
+		def zipDir = new File(temporaryDir, lpkgFile.name[0..-5])
+
+		copy {
+			from zipTree(lpkgFile)
+			into zipDir
+		}
+
+		def zipFileTree = fileTree(dir: zipDir, include: "*.jar")
+
+		zipFileTree.collectEntries {
+			zipFile ->
+
+			def pos = zipFile.name.indexOf('-')
+
+			[(zipFile.name.substring(0, pos)) : convertModuleVersion(zipFile.name.substring(pos + 1, zipFile.name.length() - 4))]
+		}
+	}
+
+	def jarFileTree = fileTree(dir: new File(portalDir.parentFile, "bundles"), exclude: "osgi/state/", includes: ["osgi/**/*.jar", "tomcat-*/lib/ext/*.jar", "tomcat-*/webapps/ROOT/WEB-INF/lib/portal-*.jar", "tomcat-*/webapps/ROOT/WEB-INF/lib/util-*.jar"])
+
+	jarFileTree.each {
+		file ->
+
+		def jarFile = new JarFile(file)
+
+		jarFile.withCloseable {
+			def attributes = jarFile.manifest.mainAttributes
+
+			def moduleName = attributes.getValue("Bundle-SymbolicName")
+
+			if (!moduleName) {
+				return
+			}
+
+			def pos = moduleName.indexOf(';')
+
+			if (pos != -1) {
+				moduleName = moduleName.substring(0, pos)
+			}
+
+			def moduleVersion = attributes.getValue("Bundle-Version")
+
+			moduleVersions[moduleName] = convertModuleVersion(moduleVersion)
+		}
+	}
+
+	println moduleVersions
+
+	def buildGradleFileTree = fileTree(dir: new File(portalDir.parentFile, dirName), excludes: ["**/bin/", "**/build/", "**/classes/", "**/node_modules/"], include: "**/build.gradle")
+
+	buildGradleFileTree.each {
+		buildGradleFile ->
+
+		def buildGradle = buildGradleFile.getText("UTF-8")
+
+		moduleVersions.each {
+			moduleName, moduleVersion ->
+
+			def pattern = "\\Q\"${moduleName}\\E\",\\s*(transitive:\\s*false,\\s*)?version:\\s*\"\\d+\\.\\d+\\.\\d+-\\d+\\.\\d+-\\d+\""
+
+			buildGradle = buildGradle.replaceFirst(pattern) {
+				all, transitive ->
+
+				if (!transitive) {
+					transitive = ""
+				}
+
+				"\"${moduleName}\", ${transitive}version: \"${moduleVersion}\""
+			}
+		}
+
+		buildGradleFile.setText buildGradle, "UTF-8"
+
+		println "Written ${buildGradleFile}"
+	}
 }
 
 removeTouch << {
