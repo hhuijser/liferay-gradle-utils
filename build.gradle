@@ -812,7 +812,7 @@ diffArtifact << {
 		def artifactVersion = it[0]
 		def artifactSuffix = it[1]
 
-		def url = "https://repository.liferay.com/nexus/content/groups/public/${artifactGroupPath}/${artifactName}/${artifactVersion}/${artifactName}-${artifactVersion}${artifactSuffix}"
+		def url = "https://repository-cdn.liferay.com/nexus/service/local/repositories/liferay-public-releases/content/${artifactGroupPath}/${artifactName}/${artifactVersion}/${artifactName}-${artifactVersion}${artifactSuffix}"
 
 		project.download {
 			src url
