@@ -43,6 +43,7 @@ defaultTasks "copyLibsToCache"
 
 ext {
 	portalDir = new File("P:/project/lfm/portal")
+	portal72Dir = new File("P:/project/lfee72x/portal")
 	portal62Dir = new File("S:/lr/liferay-portal-6.2.x")
 
 	gradleCacheDir = new File(portalDir, ".gradle/caches/modules-2/files-2.1")
@@ -80,6 +81,7 @@ task copyRemoteLibToCache
 task checkResources
 task deleteBuildXml(type: Delete)
 task deleteIvyXml(type: Delete)
+task deleteMasterOnlyDirs(type: Delete)
 task deletePackageInfo
 task deletePortalBuild(type: Delete)
 task diffArtifact
@@ -753,6 +755,18 @@ deleteBuildXml {
 
 deleteIvyXml {
 	delete fileTree(dir: modulesDir, include: "**/ivy.xml")
+}
+
+deleteMasterOnlyDirs {
+	doLast {
+		def masterOnlyFiles = fileTree(dir: portal72Dir, include: "*/**/.lfrbuild-master-only")
+
+		masterOnlyFiles.each {
+			masterOnlyFile ->
+
+			delete masterOnlyFile.parentFile
+		}
+	}
 }
 
 deletePackageInfo << {
