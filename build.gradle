@@ -46,6 +46,8 @@ ext {
 	portal72Dir = new File("P:/project/lfee72x/portal")
 	portal62Dir = new File("S:/lr/liferay-portal-6.2.x")
 
+	portal72pDir = new File("P:/project/lfee72xp/portal")
+
 	gradleCacheDir = new File(portalDir, ".gradle/caches/modules-2/files-2.1")
 	modulesDir = new File(portalDir, "modules")
 }
@@ -2391,11 +2393,11 @@ replaceBuildXml << {
 }
 
 replaceProjectDeps << {
+	def modulesProperties = GUtil.loadProperties(new File(portal72Dir, "modules/modules.properties"))
+
 	def projectDepsReplacements = [:]
 
 	def group = "com.liferay"
-
-	def groupCacheDir = new File(gradleCacheDir, group)
 
 	def projectDepsFile = file("project_deps.txt")
 
@@ -2408,22 +2410,24 @@ replaceProjectDeps << {
 
 		def artifactName = group + "." + name.replace('-' as char, '.' as char)
 
-		def artifactCacheDir = new File(groupCacheDir, artifactName)
+		if (artifactName == "com.liferay.portal.security.export.import.api") {
+			artifactName = "com.liferay.portal.security.exportimport.api"
+		}
 
-		if (!artifactCacheDir.exists()) {
-			println "Unable to find ${artifactCacheDir}"
+		def artifactVersion = modulesProperties.getProperty(artifactName)
+
+		if (!artifactVersion) {
+			println "Unable to find ${artifactName}"
 
 			return
 		}
 
-		def version = artifactCacheDir.list().first()
-
-		def artifactDep = "group: \"${group}\", name: \"${artifactName}\", version: \"${version}\""
+		def artifactDep = "group: \"${group}\", name: \"${artifactName}\", version: \"${artifactVersion}\""
 
 		projectDepsReplacements[projectDep] = artifactDep
 	}
 
-	def buildGradleFileTree = fileTree(dir: new File(modulesDir, "ee"), include: "**/build.gradle")
+	def buildGradleFileTree = fileTree(dir: new File(portal72pDir, "modules/private/apps"), include: "**/build.gradle")
 
 	buildGradleFileTree.each {
 		buildGradleFile ->
@@ -2433,7 +2437,7 @@ replaceProjectDeps << {
 		projectDepsReplacements.each {
 			k, v ->
 
-			buildGradle = buildGradle.replace(k, v)
+			buildGradle = buildGradle.replace("compileOnly " + k, "compileOnly " + v)
 		}
 
 		buildGradleFile.text = buildGradle
