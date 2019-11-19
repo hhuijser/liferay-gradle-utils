@@ -42,11 +42,11 @@ plugins {
 defaultTasks "copyLibsToCache"
 
 ext {
-	portalDir = new File("P:/project/lfm/portal")
-	portal72Dir = new File("P:/project/lfee72x/portal")
-	portal62Dir = new File("S:/lr/liferay-portal-6.2.x")
+	portalDir = new File("P:/project/m/portal")
+	portal72Dir = new File("P:/project/72x/portal")
+	portal72pDir = new File("P:/project/72xp/portal")
 
-	portal72pDir = new File("P:/project/lfee72xp/portal")
+	portal62Dir = new File("S:/lr/liferay-portal-6.2.x")
 
 	gradleCacheDir = new File(portalDir, ".gradle/caches/modules-2/files-2.1")
 	modulesDir = new File(portalDir, "modules")
