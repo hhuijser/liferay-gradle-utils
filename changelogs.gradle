@@ -1,0 +1,170 @@
+import groovyx.gpars.GParsPool
+
+import java.util.concurrent.ConcurrentHashMap
+import java.util.regex.Pattern
+
+buildscript {
+	dependencies {
+		classpath "org.codehaus.gpars:gpars:1.2.1"
+	}
+
+	repositories {
+		mavenCentral()
+	}
+}
+
+task fixDates
+
+fixDates << {
+	assert project.properties["portalDir"] : "Please provide a value for the '-PportalDir' property"
+
+	File modulesDir = new File(portalDir, "modules")
+
+	def includePattern = project.properties["include"] ?: ""
+	def limitVersion = project.properties["limitVersion"]
+
+	if (includePattern) {
+		includePattern = "**/${includePattern}/"
+	}
+
+	def changelogFileTree = fileTree(dir: modulesDir, exclude: "**/node_modules/", include: includePattern + "**/CHANGELOG.markdown")
+
+	changelogFileTree.each {
+		changelogFile ->
+
+		def moduleDir = changelogFile.parentFile
+
+		def bndFile = new File(moduleDir, "bnd.bnd")
+
+		if (!bndFile.exists()) {
+			return
+		}
+
+		Properties bndProperties = new Properties()
+
+		bndFile.withInputStream {
+			bndProperties.load it
+		}
+
+		def bundleSymbolicName = bndProperties.getProperty("Bundle-SymbolicName")
+
+		def changelog = changelogFile.getText("UTF-8")
+
+		changelog = changelog.normalize()
+		changelog = changelog.trim()
+
+		changelog = changelog.replaceAll(/### (\w+)\n\n/) {
+			all, c ->
+
+			"### ${c}\n"
+		}
+
+		changelog = changelog.replaceAll(/(?m)^#([\d|A-Z])/) {
+			all, c ->
+
+			"# ${c}"
+		}
+
+		changelog = changelog.replaceAll(/(?m)^## ([A-Z])/) {
+			all, c ->
+
+			"### ${c}"
+		}
+
+		changelog = changelog.replaceAll(/\[([A-Z]+)-(\d+)\]: https:\/\/issues\.liferay\.com\/browse\/.+/) {
+			all, prefix, number ->
+
+			"[${prefix}-${number}]: https://issues.liferay.com/browse/${prefix}-${number}"
+		}
+
+		changelog = changelog.replaceAll(/\[Liferay ([\w\s]+)\]: https:\/\/github\.com\/liferay\/liferay-portal\/tree\/master\/modules\/([a-z]+)\/(.+)/) {
+			all, name, groupName, dirName ->
+
+			dirName = name.toLowerCase()
+			dirName = dirName.replace(' ' as char, '-' as char)
+
+			"[Liferay ${name}]: https://github.com/liferay/liferay-portal/tree/master/modules/${groupName}/${dirName}"
+		}
+
+		changelog = changelog.replaceAll(/\[(.+)\]: http.+\n*\r*/) {
+			all, label ->
+
+			def matcher = changelog =~ Pattern.compile(Pattern.quote("[${label}]"))
+
+			if (matcher.count > 1) {
+				return all
+			}
+			else {
+				return ""
+			}
+		}
+
+		changelog = changelog.replace("*(Unreleased)*", "1970-01-01")
+
+		def versions = []
+
+		def pattern = ~/## (\d+\.\d+\.\d+) - \d\d\d\d-\d\d-\d\d( \[[A-Z]+\])?/
+
+		changelog.eachMatch(pattern) {
+			all, ver, comment ->
+
+			if (limitVersion && (limitVersion != ver)) {
+				return
+			}
+
+			versions << ver
+		}
+
+		def versionDateMap = new ConcurrentHashMap<String, Date>()
+
+		GParsPool.withPool {
+			versions.eachParallel {
+				ver ->
+
+				def xmlSlurper = new XmlSlurper()
+
+				def rootNode
+
+				try {
+					rootNode = xmlSlurper.parse("https://repository.liferay.com/nexus/service/local/repositories/liferay-public-releases/content/com/liferay/${bundleSymbolicName}/${ver}/${bundleSymbolicName}-${ver}.jar?describe=info")
+				}
+				catch (Exception e) {
+					println e.message
+
+					versionDateMap[ver] = ""
+
+					return
+				}
+
+				def calendar = Calendar.getInstance(TimeZone.getTimeZone("America/Los_Angeles"))
+
+				calendar.timeInMillis = rootNode.data.uploaded.text().toLong()
+
+				def date = calendar.format("yyyy-MM-dd")
+
+				versionDateMap[ver] = date
+
+				println "${bundleSymbolicName}: ${ver} - ${date}"
+			}
+		}
+
+		changelog = changelog.replaceAll(pattern) {
+			all, ver, comment ->
+
+			if (limitVersion && (limitVersion != ver)) {
+				return all
+			}
+
+			def commentSuffix = comment ?: ""
+			def date = versionDateMap[ver]
+
+			if (date) {
+				return "## ${ver} - ${date}${commentSuffix}"
+			}
+
+			return "## ${ver} - *(Unreleased)*${commentSuffix}"
+		}
+
+		changelogFile.setText changelog.denormalize(), "UTF-8"
+	}
+}
